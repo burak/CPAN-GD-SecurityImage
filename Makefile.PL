@@ -1,3 +1,4 @@
+#!perl
 use ExtUtils::MakeMaker;
 
 my $make = $^O =~ m{MSWin}i

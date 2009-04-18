@@ -25,7 +25,7 @@ use Cwd;
 
 # - - - - - - - - - - - - - - > S T A R T   P R O G R A M < - - - - - - - - - - - - - - #
 
-$VERSION = '1.41';
+$VERSION = '1.42';
 
 use constant REQUIREDMODS => qw(
    DBI

@@ -13,6 +13,7 @@ t/99-magick.t
 t/magick.pl
 t/t.api
 t/skip.test
+tools/Build.pm
 eg/demo.pl
 Changes
 Makefile.PL
