@@ -816,6 +816,20 @@ want to get an I<image type> see the C<force> option in C<out>.
 See L</"path bug"> in L</"GD bug"> for usage and other information 
 on this method.
 
+=head2 add_strip
+
+=head2 cconvert
+
+=head2 gdf
+
+=head2 h2r
+
+=head2 is_hex
+
+=head2 r2h
+
+=head2 random_angle
+
 =head1 UTILITY METHODS
 
 =head2 backends

@@ -107,6 +107,22 @@ This module contains the styles used in the security image.
 
 Used internally by L<GD::SecurityImage>. Nothing public here.
 
+=head1 METHODS
+
+=head2 style_blank
+
+=head2 style_box
+
+=head2 style_circle
+
+=head2 style_default
+
+=head2 style_ec
+
+=head2 style_ellipse
+
+=head2 style_rect
+
 =head1 SEE ALSO
 
 L<GD::SecurityImage>.

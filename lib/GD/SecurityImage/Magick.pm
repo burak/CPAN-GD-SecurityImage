@@ -238,6 +238,28 @@ Includes GD method emulations for Image::Magick.
 
 Used internally by L<GD::SecurityImage>. Nothing public here.
 
+=head1 METHODS
+
+=head2 arc
+
+=head2 ellipse
+
+=head2 filledRectangle
+
+=head2 init
+
+=head2 insert_text
+
+=head2 line
+
+=head2 out
+
+=head2 rectangle
+
+=head2 setPixel
+
+=head2 setThickness
+
 =head1 SEE ALSO
 
 L<GD::SecurityImage>.
