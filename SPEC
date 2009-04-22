@@ -1,10 +1,3 @@
-#!perl
-use ExtUtils::MakeMaker;
-
-my $make = $^O =~ m{MSWin}i
-           ? 'nmake'
-           : 'make ';
-
 print qq~
 .------------------------------------------------------------.
 | You are about to install "GD::SecurityImage".              |
@@ -12,7 +5,7 @@ print qq~
 | Although it is in the GD:: namespace, the module is also   |
 | compatible with Image::Magick. If you have "Image::Magick" | 
 | installed, the required tests for "Image::Magick" will be  |
-| performed (if you do a `$make test`).                      |
+| performed.                                                 |
 |                                                            |
 | Note that "Image::Magick" is *not* a prerequisite for      |
 | "GD::SecurityImage", but "GD" is.                          |
@@ -20,13 +13,13 @@ print qq~
 
 ~;
 
-WriteMakefile(
-   NAME         => 'GD::SecurityImage',
-   VERSION_FROM => 'lib/GD/SecurityImage.pm',
-   PREREQ_PM    => {GD => 0, 'Test::More' => '0.40'},
-   ($] >= 5.005 ? (
-   AUTHOR       => 'Burak Gursoy <burak@cpan.org>',
-   ABSTRACT     => 'Security image (captcha) generator',
-   ) : ()),
-   PL_FILES     => {},
-);
+{
+    module_name    => 'GD::SecurityImage',
+    requires       => { 'GD'            => 0      },
+    recommends     => { 'Image::Magick' => '6.0.4'},
+    meta_merge => {
+        resources => {
+            repository => 'http://bitbucket.org/burak/cpan-gd-securityimage/',
+        },
+    },
+}
