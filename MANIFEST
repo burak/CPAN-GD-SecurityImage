@@ -10,7 +10,6 @@ t/98-gd.t
 t/99-magick.t
 t/magick.pl
 t/t.api
-tools/Build.pm
 eg/demo.pl
 Changes
 Build.PL
