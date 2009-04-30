@@ -4,7 +4,7 @@ use vars qw[@ISA $AUTOLOAD $VERSION $BACKEND];
 use GD::SecurityImage::Styles;
 use Carp qw(croak);
 
-$VERSION = '1.68';
+$VERSION = '1.69';
 
 sub import {
    my $class   = shift;
