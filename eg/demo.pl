@@ -2,22 +2,27 @@
 # -> GD::SecurityImage demo program
 # -> Burak Gürsoy (c) 2004-2007. 
 # See the document section after "__END__" for license and other information.
-package demo;
+package Demo;
 use strict;
-use vars qw( $VERSION %config  );
+use warnings;
+use vars qw( $VERSION  );
 use CGI  qw( header escapeHTML );
 use Cwd;
+use Carp qw( croak );
+use constant SALT_RANDOM   => 100;
+use constant MAGICK_PTSIZE => 12;
+use constant GD_PTSIZE     =>  8;
 
-%config = (
+my %config = (
    database   => 'gdsi',                 # database name (for session storage)
    table_name => 'sessions',             # only change this value, if you *really* have to use another table name. Also change the SQL code below.
    user       => 'root',                 # database user name
-   pass       => '',                     # database user's password
-   font       => getcwd."/StayPuft.ttf", # ttf font. change this to an absolute path if getcwd is failing
+   pass       => q{},                    # database user's password
+   font       => getcwd.'/StayPuft.ttf', # ttf font. change this to an absolute path if getcwd is failing
    itype      => 'png',                  # image format. set this to gif or png or jpeg
    use_magick => 0,                      # use Image::Magick or GD
    img_stat   => 1,                      # display statistics on the image?
-   program    => '',                     # if CGI.pm fails to locate program url, set this value.
+   program    => q{},                    # if CGI.pm fails to locate program url, set this value.
 );
 
 # You'll need this to create the sessions table. 
@@ -25,7 +30,7 @@ use Cwd;
 
 # - - - - - - - - - - - - - - > S T A R T   P R O G R A M < - - - - - - - - - - - - - - #
 
-$VERSION = '1.42';
+$VERSION = '1.50';
 
 use constant REQUIREDMODS => qw(
    DBI
@@ -44,46 +49,49 @@ BEGIN {
       local $SIG{__DIE__};
       local $@;
       my $mod = shift;
-      eval "require $mod";
-      push @errors, { module => $mod, error  => $@ } if $@;
+      my $eok = eval "require $mod; 1;";
+      push @errors, { module => $mod, error  => $@ } if $@ || ! $eok;
    };
    $test->($_) foreach REQUIREDMODS;
    if ( @errors ) {
       my $err = qq{<pre>This demo program needs several CPAN modules to run:\n\n};
       foreach my $e ( @errors ) {
-         $err .= qq~<b><span style="color:red">[FAILED]</span>~
+         $err .= q~<b><span style="color:red">[FAILED]</span>~
                . qq~ $e->{module}</b>: $e->{error}<br />~;
       }
-      print header . $err . '</pre>';
+      print header . $err . '</pre>' or croak "Can not print to STDOUT: $!";
       exit;
    }
-   $SIG{__DIE__} = sub {
-      print header . qq~
-         <h1 style="color:red;font-weight:bold"
-            >FATAL ERROR</h1>
-         @_
-      ~;
-      exit;
-   };
 }
 
-my $NOT_EXISTS = quotemeta "Object does not exist in the data store";
+local $SIG{__DIE__} = sub {
+   print header . <<"ERROR" or croak "Can not print to STDOUT: $!";
+      <h1 style="color:red;font-weight:bold"
+         >FATAL ERROR</h1>
+      @_
+ERROR
+   exit;
+};
+
+my $NOT_EXISTS = quotemeta 'Object does not exist in the data store';
 
 run() if not caller; # if you require this, you'll need to call demo::run()
 
 sub TEST_FONT_EXISTENCE {
    if ( not $config{use_magick} ) {
-      if ( $config{font} =~ m[\s]s ) {
-         die "The font path '$config{font}' has a space in it. GD hates spaces!";
+      if ( $config{font} =~ m{\s}xms ) {
+         croak "The font path '$config{font}' has a space in it. GD hates spaces!";
       }
    }
-   local *FONTFILE;
-   if ( open FONTFILE, $config{font} ) {
-      close FONTFILE;
+   require IO::File;
+   my $FONTFILE = IO::File->new;
+   if ( $FONTFILE->open( $config{font} ) ) {
+      $FONTFILE->close;
    }
    else {
-      die qq~I can not open/find the font file in '$config{font}': $!~;
+      croak qq~I can not open/find the font file in '$config{font}': $!~;
    }
+   return;
 }
 
 sub new {
@@ -92,11 +100,11 @@ sub new {
    my $self  = {
       ISDISPLAY => 0,
       SID       => undef,
-      CPAN      => "http://search.cpan.org/dist",
+      CPAN      => 'http://search.cpan.org/dist',
       IS_GD     => 0,
    };
    bless $self, $class;
-   $self;
+   return $self;
 }
 
 sub run {
@@ -110,7 +118,7 @@ sub run {
    $self->{program} = $config{program};
    if ( ! $self->{program} ){
       # it is possible to get the url as "demo.pl??foo=bar"
-      ($self->{program}, my @jp) = split /\?/, $self->{cgi}->url;
+      ($self->{program}, my @jp) = split m{\?}xms, $self->{cgi}->url;
    }
    my %options      = $self->all_options;
    my %styles       = $self->all_styles;
@@ -132,14 +140,14 @@ sub run {
    my %session;
    my $create_ses = sub { # fetch/create session
       my $sid = @_ ? undef : $self->{cgi}->cookie('GDSI_ID');
-      tie %session, 'Apache::Session::MySQL', $sid, {
+      tie %session, 'Apache::Session::MySQL', $sid, { ## no critic (Miscellanea::ProhibitTies)
          Handle     => $dbh,
          LockHandle => $dbh,
          TableName  => $config{table_name},
       };
    };
 
-   eval { $create_ses->() };
+   my $eok = eval { $create_ses->() 1; };
 
    # I'm doing a little trick to by-pass exceptions if the session id
    # coming from the user no longer exists in the database. 
@@ -151,13 +159,13 @@ sub run {
       $create_ses->('new');
    }
 
-   if ( not $session{security_code} ) {
+   if ( ! $session{security_code} ) {
       $session{security_code} = $self->_random; # initialize random code
    }
 
    $self->{ISDISPLAY} = $self->{cgi}->param('display') || 0;
    $self->{SID}       = $session{_session_id};
-   my $output         = ''; # output buffer
+   my $output         = q{}; # output buffer
 
    if ( $self->{ISDISPLAY} ) {
       $START = Time::HiRes::time();
@@ -178,14 +186,14 @@ sub run {
 
    untie %session;
    $dbh->disconnect;
-   print $output;
+   print $output or croak "Can not print to STDOUT: $!";
    exit;
 }
 
 sub process {
    my $self = shift;
-   my $ses  = shift || die "security_code from session is missing";
-   my $code = $self->{cgi}->param('code') || '';
+   my $ses  = shift || croak 'Security_code from session is missing';
+   my $code = $self->{cgi}->param('code') || q{};
    my $pass = $self->iseq( $code, $ses );
    my $meth = $pass ? '_congrats' : '_failure';
    return $self->$meth( $code, $ses );
@@ -193,35 +201,36 @@ sub process {
 
 sub backenduri {
    my $self = shift;
-   my $rv   = qq{Security image generated with <b>};
+   my $rv   = q{Security image generated with <b>};
       $rv  .= $self->{IS_GD}
-            ? qq~<a href="$self->{CPAN}/GD"         target="_blank">GD</a> v$GD::VERSION~ 
+            ? qq~<a href="$self->{CPAN}/GD"         target="_blank">GD</a> v$GD::VERSION~
             : qq~<a href="$self->{CPAN}/PerlMagick" target="_blank">Image::Magick</a> v$Image::Magick::VERSION~;
    return $rv . '</b>';
 }
 
-sub _random { String::Random->new->randregex('\d\d\d\d\d\d') }
+sub _random { return String::Random->new->randregex('\d\d\d\d\d\d') }
 
 sub _failure {
    my $self = shift;
-   my $code = CGI::escapeHTML(shift || '');
-   my $ses  = shift || '';
-   my $rv   = qq~
+   my $code = CGI::escapeHTML(shift || q{});
+   my $ses  = shift || q{};
+   my $rv   = <<"FAIL";
       <b>'${code}' != '${ses}'</b>
       <br />
       <span style="color:red;font-weight:bold">
       You have failed to identify yourself as a human!
       </span>
-      <br />~;
+      <br />
+FAIL
    $rv .= $self->form();
    return $rv;
 }
 
 sub _congrats {
    my $self = shift;
-   my $form = shift || '';
-   my $ses  = shift || '';
-   return qq~
+   my $form = shift || q{};
+   my $ses  = shift || q{};
+   return <<"PASS";
       <b>'$form' == '$ses'</b>
       <br />
       <span style="color:#009700;font-weight:bold">
@@ -230,20 +239,19 @@ sub _congrats {
       <br />
       <br />
       <a href="$self->{program}">Try again</a>
-   ~;
+PASS
 }
 
 sub iseq {
    my $self = shift;
    my $form = shift || return;
    my $ses  = shift || return;
-   return if $form =~ m{[^0-9]};
+   return if $form =~ m{[^0-9]}xms;
    return $form eq $ses;
 }
 
 sub myheader {
-   my $self    = shift;
-   my %o       = @_;
+   my($self, %o) = @_;
    my $display = $self->{ISDISPLAY};
    my $type    = $o{type} ? $o{type}
                : $display ? 'image/'.$config{itype}
@@ -253,7 +261,7 @@ sub myheader {
                     -value => $self->{SID},
                  );
    return $self->{cgi}->header(
-      -type   => $type, 
+      -type   => $type,
       -cookie => $c
    );
 }
@@ -262,7 +270,7 @@ sub myheader {
 
 sub help {
    my $self = shift;
-   qq~
+   return <<"HELP";
 
 If you want to change the image generation options, open this file with
 a text editor and search for the <b>%config</b> hash.
@@ -352,14 +360,14 @@ used for session data storage.
 
 </table>
 
-   ~;
+HELP
 }
 
 sub form {
    my $self = shift;
    # by-pass browser cache with this random fake value
-   my $salt = '&salt=' . $$ . time . rand(100);
-   return qq~
+   my $salt = '&salt=' . $$ . time . rand SALT_RANDOM;
+   return <<"FORM";
    <form action="$self->{program}" method="post">
     <table border="0" cellpadding="2" cellspacing="1">
      <tr>
@@ -377,12 +385,13 @@ sub form {
      </tr>
     </table>
    </form>
-   ~
+FORM
 }
 
 sub html_head {
    my $self = shift;
-   qq~<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+   return <<"HTML_HEAD";
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
    <head>
@@ -414,7 +423,7 @@ sub html_head {
     <h2><a href   = "$self->{CPAN}/GD-SecurityImage"
            target = "_blank"
            >GD::SecurityImage</a> v$GD::SecurityImage::VERSION - DEMO v$VERSION</h2>
-   ~
+HTML_HEAD
 }
 
 sub html_foot {
@@ -441,14 +450,14 @@ sub create_image { # create a security image with random options and styles
       lines   => $s->{lines},
       bgcolor => $s->{bgcolor},
       %{ $self->{rnd_opt} },
-   )
-   ->random  ($code)
-   ->create  (ttf => $s->{name}, $s->{text_color}, $s->{line_color})
-   ->particle($s->{dots} ? ($s->{particle}, $s->{dots}) 
-                         : ($s->{particle})
    );
+   $i->random   ($code)
+      ->create  (ttf => $s->{name}, $s->{text_color}, $s->{line_color})
+      ->particle($s->{dots} ? ($s->{particle}, $s->{dots})
+                            : ($s->{particle})
+      );
    if ($i->gdbox_empty) {
-      die qq~An error occurred while opening the font file '$config{font}'. ~
+      croak qq~An error occurred while opening the font file '$config{font}'. ~
          .qq~Please set font option to an "exact" path, not relative. Error: $@~;
    }
    if ($config{img_stat}) {
@@ -457,13 +466,13 @@ sub create_image { # create a security image with random options and styles
          y      => 'up',
          gd     => 1,
          strip  => 1,
-         color  => "#000000",
-         scolor => "#FFFFFF",
+         color  => '#000000',
+         scolor => '#FFFFFF',
          # low-level access to an object table is not a good thing,
          # since the author can change/delete it without notification 
          # in later releases ;)
-         ptsize => $i->{IS_MAGICK} ? 12 : 8,
-         text   => sprintf("Security Image generated at %.3f seconds",
+         ptsize => $i->{IS_MAGICK} ? MAGICK_PTSIZE : GD_PTSIZE,
+         text   => sprintf('Security Image generated at %.3f seconds',
                            Time::HiRes::time() - $START),
       );
    }
@@ -531,6 +540,7 @@ sub all_options {
 }
 
 sub all_styles {
+   ## no critic (ValuesAndExpressions::ProhibitMagicNumbers)
    return ec => {
       name       => 'ec',
       lines      => 16,
@@ -541,7 +551,7 @@ sub all_styles {
    },
    ellipse => {
       name       => 'ellipse',
-      lines      => 15, 
+      lines      => 15,
       bgcolor    => [208, 202, 206],
       text_color => [184,  20, 180],
       line_color => [184,  20, 180],
@@ -549,9 +559,9 @@ sub all_styles {
    },
    circle => {
       name       => 'circle',
-      lines      => 40, 
+      lines      => 40,
       bgcolor    => [210, 215, 196],
-      text_color => [ 63, 143, 167], 
+      text_color => [ 63, 143, 167],
       line_color => [210, 215, 196],
       particle   => 3500,
    },
@@ -566,7 +576,7 @@ sub all_styles {
    rect => {
       name       => 'rect',
       lines      => 30,
-      text_color => [ 63, 143, 167], 
+      text_color => [ 63, 143, 167],
       line_color => [226, 223, 169],
       particle   => 2000,
    },

@@ -2,6 +2,9 @@ Revision history for Perl extension GD::SecurityImage.
 
 Time zone is GMT+2.
 
+1.71 Fri Oct  2 05:50:46 2009
+    => Major Perl::Critic refactoring.
+
 1.70 Thu Apr 30 16:56:32 2009
     => Made a mistake. version checking test is really gone now.
 

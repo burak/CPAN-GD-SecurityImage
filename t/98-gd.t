@@ -1,8 +1,15 @@
 #!/usr/bin/env perl -w
 use strict;
+use warnings;
 use vars qw( %API );
-use Test;
+use Test::More;
 use Cwd;
+use Carp qw(croak);
+use lib qw(
+   ..
+   ../t/lib
+      t/lib
+);
 
 BEGIN {
    %API = (
@@ -24,8 +31,9 @@ BEGIN {
    import  GD::SecurityImage;
 }
 
-require 't/t.api';
-my $tapi = 'tapi';
+use Test::GDSI;
+
+my $tapi = 'Test::GDSI';
    $tapi->clear;
 
 my $font = getcwd.'/StayPuft.ttf';
@@ -50,7 +58,8 @@ foreach my $api (keys %API) {
             $style,
             $api,
             $c++
-         )
+         ),
+         "$style - $api - $c++"
       );
    }
    $tapi->clear;
@@ -118,6 +127,6 @@ sub args {
      (my $tmp = $name) =~ s{ _info_text }{}xms;
       $o = $options{$tmp};
    }
-   die "Bogus arg name $name!" if not $o;
+   croak "Bogus arg name $name!" if not $o;
    return %{$o}
 }

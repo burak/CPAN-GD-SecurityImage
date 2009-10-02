@@ -1,11 +1,14 @@
 #!/usr/bin/env perl -w
 use strict;
+use warnings;
 use vars qw( $MAGICK_SKIP );
-use Test;
+use Test::More;
 use Cwd;
+use Carp qw( croak );
+use lib  qw( .. );
 
 BEGIN {
-   do 't/magick.pl' || die "Can not include t/magick.pl: $!";
+   do 't/magick.pl' || croak "Can not include t/magick.pl: $!";
 
    my %total = (
       magick => 2,
@@ -15,29 +18,32 @@ BEGIN {
 
    my $total  = 0;
       $total += $total{$_} foreach keys %total;
-   my $class = 'GD::SecurityImage';
+   my $class  = 'GD::SecurityImage';
 
    plan tests => $total;
 
    require GD::SecurityImage;
 
-   eval { $class->new };
-   ok($@); # if there is an error == OK [since we didn't import() so far]
+   my $eok = eval { $class->new };
+   ok( $@, q{If there is an error == OK [since we didn't import() so far]} );
 
    # test if we've loaded the right library
-   gd();
-   $MAGICK_SKIP ? skip_magick() : magick();
-   exit;
+   GD_TEST: {
+      $class->import( use_magick => 0 );
+      ok( $class->new->raw->isa('GD::Image' ), 'Loaded GD [1]' );
+      $class->import( backend => 'GD' );
+      ok( $class->new->raw->isa('GD::Image' ), 'Loaded GD [2]' );
+   }
 
-   sub gd {
-      $class->import( use_magick => 0        ); ok( $class->new->raw->isa('GD::Image'    ) );
-      $class->import( backend    => 'GD'     ); ok( $class->new->raw->isa('GD::Image'    ) );
-   }
-   sub magick {
-      $class->import( use_magick => 1        ); ok( $class->new->raw->isa('Image::Magick') );
-      $class->import( backend    => 'Magick' ); ok( $class->new->raw->isa('Image::Magick') );
-   }
-   sub skip_magick {
-      skip( $MAGICK_SKIP . " Skipping...", sub{1}) for 1..$total{magick};
-   }
+   $MAGICK_SKIP
+   ?  do {
+         skip( $MAGICK_SKIP . ' Skipping...', sub{1}) for 1..$total{magick};
+      }
+   : do {
+         $class->import( use_magick => 1        );
+         ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [1]' );
+         $class->import( backend    => 'Magick' );
+         ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [2]' );
+      }
+   ;
 }

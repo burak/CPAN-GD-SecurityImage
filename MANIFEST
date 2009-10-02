@@ -9,7 +9,7 @@ t/06-version_magick.t
 t/98-gd.t
 t/99-magick.t
 t/magick.pl
-t/t.api
+t/lib/Test/GDSI.pm
 eg/demo.pl
 Changes
 Build.PL

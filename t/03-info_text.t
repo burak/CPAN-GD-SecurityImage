@@ -1,10 +1,9 @@
 #!/usr/bin/env perl -w
 use strict;
-use Test;
+use warnings;
+use Test::More qw(no_plan);
 use Cwd;
 use GD::SecurityImage;
-
-plan tests => 1;
 
 my $i      = GD::SecurityImage->new->random;
 my $random = $i->random_str;
@@ -19,4 +18,4 @@ $i->info_text(
 
 my( $image, $mime, $random2 ) = $i->out;
 
-ok( $random eq $random2 ); # info_text must not affect random string
+ok( $random eq $random2, 'info_text must not affect random string' );

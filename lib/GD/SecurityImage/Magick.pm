@@ -1,6 +1,7 @@
 package GD::SecurityImage::Magick;
 # GD method emulation class for Image::Magick
 use strict;
+use warnings;
 use vars qw($VERSION);
 # Magick related
 use constant XPPEM        => 0; # character width 
@@ -15,15 +16,16 @@ use constant ANGLE        => -2;
 use constant CHAR         => -1;
 # image data
 use constant MAX_COMPRESS => 100;
+use constant FULL_CIRCLE  => 360;
 
 use Image::Magick;
 
-$VERSION = '1.38';
+$VERSION = '1.71';
 
 sub init {
    # Create the image object
    my $self        = shift;
-   my $bg          = $self->cconvert( $self->{bgcolor} ); 
+   my $bg          = $self->cconvert( $self->{bgcolor} );
    $self->{image}  = Image::Magick->new;
    $self->{image}->Set(  size=> "$self->{width}x$self->{height}" );
    $self->{image}->Read( 'null:' . $bg );
@@ -34,15 +36,15 @@ sub init {
 }
 
 sub out {
-   my $self = shift;
-   my %opt  = scalar @_ % 2 ? () : (@_);
+   my($self, @args) = @_;
+   my %opt  = @args % 2 ? () : @args;
    my $type = 'gif'; # default format
    if ($opt{force}) {
-      my %g = map { $_, 1 } $self->{image}->QueryFormat;
+      my %g = map { $_ => 1 } $self->{image}->QueryFormat;
       $type = $opt{force} if exists $g{$opt{force}};
    }
    $self->{image}->Set( magick => $type );
-   if ( $opt{'compress'} && $type =~ m[^(png|jpeg)$] ) {
+   if ( $opt{'compress'} && ( $type eq 'png' || $type eq 'jpeg' ) ) {
       if($type eq 'png') {
          $opt{'compress'} = MAX_COMPRESS;
          $self->{image}->Set( compression => 'Zip' );
@@ -72,12 +74,14 @@ sub insert_text {
    );
 
    if ($self->{scramble}) {
-      my $space = [$info->(' '), 0, ' ']; # get " " parameters
+      my $space = [$info->(q{ }), 0, q{ }]; # get " " parameters
       my @randomy;
       my $sy    = $space->[ASCENDER] || 1;
-      push(@randomy,  $_, - $_) foreach $sy/2, $sy/4, $sy/8;
+      ## no critic (ValuesAndExpressions::ProhibitMagicNumbers)
+      push @randomy,  $_, - $_ foreach $sy/2, $sy/4, $sy/8;
+      ## use critic
       my @char;
-      foreach ( split //, $key ) {
+      foreach ( split m{}xms, $key ) {
          push @char, [$info->($_), $self->random_angle, $_], $space, $space, $space;
       }
       my $total = 0;
@@ -99,7 +103,7 @@ sub insert_text {
       my $tl = $self->{_TEXT_LOCATION_};
       if ($tl->{_place_}) {
          # put the text to one of the four corners in the image
-         $x = $tl->{x} eq 'left' ? 2                   : $self->{width}-$metric[WIDTH]-2;
+         $x = $tl->{x} eq 'left' ? 2                   : $self->{width}-$metric[WIDTH] - 2;
          $y = $tl->{y} eq 'up'   ? $metric[ASCENDER]+1 : $self->{height}-2;
          $self->add_strip($x, $y, $metric[WIDTH], $metric[ASCENDER]) if $tl->{strip};
       }
@@ -108,27 +112,25 @@ sub insert_text {
          $y = ($self->{height} + $metric[ASCENDER]) / 2;
       }
       $self->{image}->Annotate(
-         text   => $key, 
-         x      => $x, 
+         text   => $key,
+         x      => $x,
          y      => $y,
-         rotate => $self->{angle} ? 360 - $self->{angle} : 0,
+         rotate => $self->{angle} ? FULL_CIRCLE - $self->{angle} : 0,
          %same,
       );
    }
    return;
 }
 
-sub setPixel {
-   my $self = shift;
-   my($x, $y, $color) = @_;
-   $self->{image}->Set( "pixel[$x,$y]" => $self->cconvert($color) );
+sub setPixel { ## no critic (NamingConventions::Capitalization)
+   my($self, $x, $y, $color) = @_;
+   return $self->{image}->Set( "pixel[$x,$y]" => $self->cconvert($color) );
 }
 
 sub line {
-   my $self = shift;
-   my($x1, $y1, $x2, $y2, $color) = @_;
-   $self->{image}->Draw(
-      primitive   => "line",
+   my($self, $x1, $y1, $x2, $y2, $color) = @_;
+   return $self->{image}->Draw(
+      primitive   => 'line',
       points      => "$x1,$y1 $x2,$y2",
       stroke      => $self->cconvert($color),
       strokewidth => $self->{MAGICK}{strokewidth},
@@ -136,10 +138,9 @@ sub line {
 }
 
 sub rectangle {
-   my $self = shift;
-   my($x1,$y1,$x2,$y2,$color) = @_;
-   $self->{image}->Draw(
-      primitive   => "rectangle",
+   my($self, $x1,$y1,$x2,$y2,$color) = @_;
+   return $self->{image}->Draw(
+      primitive   => 'rectangle',
       points      => "$x1,$y1 $x2,$y2",
       stroke      => $self->cconvert($color),
       strokewidth => $self->{MAGICK}{strokewidth},
@@ -147,11 +148,10 @@ sub rectangle {
    );
 }
 
-sub filledRectangle {
-   my $self = shift;
-   my($x1,$y1,$x2,$y2,$color) = @_;
-   $self->{image}->Draw(
-      primitive   => "rectangle",
+sub filledRectangle { ## no critic (NamingConventions::Capitalization)
+   my($self, $x1, $y1, $x2, $y2, $color) = @_;
+   return $self->{image}->Draw(
+      primitive   => 'rectangle',
       points      => "$x1,$y1 $x2,$y2",
       fill        => $self->cconvert($color),
       stroke      => $self->cconvert($color),
@@ -160,10 +160,9 @@ sub filledRectangle {
 }
 
 sub ellipse {
-   my $self = shift;
-   my($cx,$cy,$width,$height,$color) = @_;
-   $self->{image}->Draw(
-      primitive   => "ellipse",
+   my($self, $cx, $cy, $width, $height, $color) = @_;
+   return $self->{image}->Draw(
+      primitive   => 'ellipse',
       points      => "$cx,$cy $width,$height 0,360",
       stroke      => $self->cconvert($color),
       strokewidth => $self->{MAGICK}{strokewidth},
@@ -172,12 +171,11 @@ sub ellipse {
 }
 
 sub arc {
-   my $self = shift;
-   my($cx,$cy,$width,$height,$start,$end,$color) = @_;
+   my($self, $cx, $cy, $width, $height, $start, $end, $color) = @_;
    # I couldn't do that with "arc" primitive. 
    # Patches are welcome, but this seems to work :)
-   $self->{image}->Draw(
-      primitive   => "ellipse",
+   return $self->{image}->Draw(
+      primitive   => 'ellipse',
       points      => "$cx,$cy $width,$height $start,$end",
       stroke      => $self->cconvert($color),
       strokewidth => $self->{MAGICK}{strokewidth},
@@ -185,7 +183,7 @@ sub arc {
    );
 }
 
-sub setThickness {
+sub setThickness { ## no critic (NamingConventions::Capitalization)
    my $self = shift;
    my $thickness = shift || return;
    $self->{MAGICK}{strokewidth} *= $thickness;
@@ -211,14 +209,16 @@ sub _versionlt {
 sub _tovstr {
    my $self  = shift;
    my $thing = shift || return '0.0.0';
-   my @j     = split /\./, $thing;
-   my $rv    = join '.',
+   my @j     = split m{[.]}xms, $thing;
+   my $rv    = join q{.},
                     shift(@j) || 0,
                     shift(@j) || 0,
                     shift(@j) || 0,
                     @j ? (@j) : ();
    return $rv;
 }
+
+sub gdbox_empty { return 0 }
 
 1;
 
@@ -260,22 +260,10 @@ Used internally by L<GD::SecurityImage>. Nothing public here.
 
 =head2 setThickness
 
+=head2 gdbox_empty
+
 =head1 SEE ALSO
 
 L<GD::SecurityImage>.
-
-=head1 AUTHOR
-
-Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
-
-=head1 COPYRIGHT
-
-Copyright 2004-2008 Burak GE<252>rsoy. All rights reserved.
-
-=head1 LICENSE
-
-This library is free software; you can redistribute it and/or modify 
-it under the same terms as Perl itself, either Perl version 5.8.8 or, 
-at your option, any later version of Perl 5 you may have available.
 
 =cut

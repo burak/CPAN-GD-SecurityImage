@@ -1,25 +1,40 @@
 package GD::SecurityImage;
 use strict;
-use vars qw[@ISA $AUTOLOAD $VERSION $BACKEND];
+use warnings;
+use vars qw[@ISA $VERSION $BACKEND];
 use GD::SecurityImage::Styles;
 use Carp qw(croak);
+use constant RGB_WHITE   => ( 255, 255, 255 );
+use constant RGB_BLACK   => ( 0, 0, 0 );
+use constant RANDOM_DATA => ( 0..9 );
+use constant FULL_CIRCLE => 360;
+use constant DEFAULT_ANGLES => (0,5,8,15,22,26,29,33,35,36,40,43,45,53,56);
 
-$VERSION = '1.70';
+use constant DEFAULT_WIDTH  => 80;
+use constant DEFAULT_HEIGHT => 30;
+use constant DEFAULT_PTSIZE => 20;
+use constant DEFAULT_LINES  => 10;
+
+use constant MAX_RGB_VALUE  => 255;
+use constant PARTICLE_MULTIPLIER => 20;
+use constant MAX_RGB_PARAMS => 3;
+
+$VERSION = '1.71';
 
 sub import {
-   my $class   = shift;
-   my %opt     = scalar(@_) % 2 ? () : (@_);
+   my($class, @args) = @_;
+   my %opt     = @args % 2 ? () : @args;
    # init/reset globals
-   $BACKEND    = ''; # name of the back-end
-   @ISA        = ();
+   $BACKEND    = q{}; # name of the back-end
+   @ISA        = (); ## no critic (ClassHierarchies::ProhibitExplicitISA)
    # load the drawing interface
    if ( exists $opt{use_magick} && $opt{use_magick} ) {
       require GD::SecurityImage::Magick;
       $BACKEND = 'Magick';
    }
    elsif ( exists $opt{backend} && $opt{backend} ) {
-      my $be = __PACKAGE__.'::'.$opt{backend};
-      eval "require $be";
+      my $be  = __PACKAGE__.q{::}.$opt{backend};
+      my $eok = eval "require $be";
       croak "Unable to locate the $class back-end $be: $@" if $@;
       $BACKEND = $opt{backend} eq 'AC' ? 'GD' : $opt{backend};
    }
@@ -27,15 +42,15 @@ sub import {
       require GD::SecurityImage::GD;
       $BACKEND = 'GD';
    }
-   push @ISA, 'GD::SecurityImage::' . $BACKEND;
-   push @ISA, qw(GD::SecurityImage::Styles); # load styles
+   push @ISA, 'GD::SecurityImage::' . $BACKEND, ## no critic (ClassHierarchies::ProhibitExplicitISA)
+              qw(GD::SecurityImage::Styles); # load styles
    return;
 }
 
 sub new {
-   my $class = shift;
+   my($class, @args) = @_;
       $BACKEND || croak "You didn't import $class!";
-   my %opt   = scalar @_ % 2 ? () : (@_);
+   my %opt   = @args % 2 ? () : @args;
 
    my $self  = {
       IS_MAGICK       => $BACKEND eq 'Magick',
@@ -44,7 +59,7 @@ sub new {
       DISABLED        => {}, # list of methods that a backend (or some older version of backend) can't do
       MAGICK          => {}, # Image::Magick configuration options
       GDBOX_EMPTY     => 0,  # GD::SecurityImage::GD::insert_text() failed?
-      _RANDOM_NUMBER_ => '', # random security code
+      _RANDOM_NUMBER_ => q{}, # random security code
       _RNDMAX_        => 6,  # maximum number of characters in a random string.
       _COLOR_         => {}, # text and line colors
       _CREATECALLED_  => 0,  # create() called? (check for particle())
@@ -52,50 +67,40 @@ sub new {
    };
    bless $self, $class;
 
-   my %options = (
-      width      => $opt{width}               || 80,
-      height     => $opt{height}              || 30,
-      ptsize     => $opt{ptsize}              || 20,
-      lines      => $opt{lines}               || 10,
-      rndmax     => $opt{rndmax}              || $self->{_RNDMAX_},
-      rnd_data   => $opt{rnd_data}            || [0..9],
-      font       => $opt{font}                || '',
-      gd_font    => $self->gdf($opt{gd_font}) || '',
-      bgcolor    => $opt{bgcolor}             || [255, 255, 255],
-      send_ctobg => $opt{send_ctobg}          || 0,
-      frame      => defined($opt{frame}) ? $opt{frame} : 1,
-      scramble   => $opt{scramble}            || 0,
-      angle      => $opt{angle}               || 0,
-      thickness  => $opt{thickness}           || 0,
-      _ANGLES_   => [], # angle list for scrambled images
-   );
+   my %options = $self->_new_options( %opt );
 
-   if($opt{text_location} && ref $opt{text_location} && ref $opt{text_location} eq 'HASH') {
+   if ( $opt{text_location}
+      && ref $opt{text_location}
+      && ref $opt{text_location} eq 'HASH' ) {
       $self->{_TEXT_LOCATION_} = { %{$opt{text_location}}, _place_ => 1 };
    }
    else {
       $self->{_TEXT_LOCATION_}{_place_} = 0;
    }
-   $self->{_RNDMAX_} = $options{rndmax}; 
+
+   $self->{_RNDMAX_} = $options{rndmax};
 
    $self->{$_} = $options{$_} foreach keys %options;
-   if($self->{angle}) { # validate angle
-      $self->{angle} = 360 + $self->{angle} if $self->{angle} < 0;
-      if($self->{angle} > 360) {
-         croak "Angle parameter can take values in the range -360..360";
+
+   if ( $self->{angle} ) { # validate angle
+      $self->{angle} = FULL_CIRCLE + $self->{angle} if $self->{angle} < 0;
+      if ( $self->{angle} > FULL_CIRCLE ) {
+         croak 'Angle parameter can take values in the range -360..360';
       }
    }
 
-   if ($self->{scramble}) {
-      if ($self->{angle}) {
+   if ( $self->{scramble} ) {
+      if ( $self->{angle} ) {
          # Does the user want a fixed angle?
          push @{ $self->{_ANGLES_} }, $self->{angle};
       }
       else {
          # Generate angle range. The reason for hardcoding these is; 
          # it'll be less random for 0..60 range
-         push @{ $self->{_ANGLES_} }, (0,5,8,15,22,26,29,33,35,36,40,43,45,53,56);
-         push @{ $self->{_ANGLES_} }, map {360 - $_} @{ $self->{_ANGLES_} }; # push negatives
+         push @{ $self->{_ANGLES_} }, DEFAULT_ANGLES;
+         # push negatives
+         push @{ $self->{_ANGLES_} },
+              map {FULL_CIRCLE - $_} @{ $self->{_ANGLES_} };
       }
    }
 
@@ -103,42 +108,65 @@ sub new {
    return $self;
 }
 
+sub _new_options {
+   my($self, %opt) = @_;
+   my %options = (
+      width      => $opt{width}               || DEFAULT_WIDTH,
+      height     => $opt{height}              || DEFAULT_HEIGHT,
+      ptsize     => $opt{ptsize}              || DEFAULT_PTSIZE,
+      lines      => $opt{lines}               || DEFAULT_LINES,
+      rndmax     => $opt{rndmax}              || $self->{_RNDMAX_},
+      rnd_data   => $opt{rnd_data}            || [ RANDOM_DATA ],
+      font       => $opt{font}                || q{},
+      gd_font    => $self->gdf($opt{gd_font}) || q{},
+      bgcolor    => $opt{bgcolor}             || [ RGB_WHITE ],
+      send_ctobg => $opt{send_ctobg}          || 0,
+      frame      => defined($opt{frame}) ? $opt{frame} : 1,
+      scramble   => $opt{scramble}            || 0,
+      angle      => $opt{angle}               || 0,
+      thickness  => $opt{thickness}           || 0,
+      _ANGLES_   => [], # angle list for scrambled images
+   );
+   return %options;
+}
+
 sub backends {
    my $self  = shift;
    my $class = ref($self) || $self;
    my(@list, @dir_list);
+   require Symbol;
    foreach my $inc (@INC) {
       my $dir = "$inc/GD/SecurityImage";
       next unless -d $dir;
-      local  *DIR;
-      opendir DIR, $dir or croak "opendir($dir) failed: $!";
-      my @dir = readdir DIR;
-      closedir DIR;
+      my $DIR = Symbol::gensym();
+      opendir $DIR, $dir or croak "opendir($dir) failed: $!";
+      my @dir = readdir $DIR;
+      closedir $DIR;
       push @dir_list, $dir;
       foreach my $file (@dir) {
          next if -d $file;
-         next if $file =~ m[^\.];
-         next if $file =~ m[^(Styles|AC|Handler)\.pm$];
-         $file =~ s[\.pm$][];
+         next if $file =~ m{ \A [.] }xms;
+         next if $file =~ m{ \A (Styles|AC|Handler)[.]pm \z}xms;
+         $file =~ s{ [.]pm \z}{}xms;
          push @list, $file;
       }
    }
-   if (defined wantarray) {
-      return @list;
-   }
-   else {
-      print "Available back-ends in $class v$VERSION are:\n\t"
-            .join("\n\t", @list)
-            ."\n\n"
-            ."Search directories:\n\t"
-            .join("\n\t", @dir_list);
-   }
+
+   return @list if defined wantarray;
+
+   my $report = "Available back-ends in $class v$VERSION are:\n\t"
+               . join("\n\t", @list)
+               . "\n\n"
+               . "Search directories:\n\t"
+               . join "\n\t", @dir_list;
+   print $report or croak "Unable to print to STDOUT: $!";
+   return;
 }
 
 sub gdf {
-   my $self = shift;
+   my($self, @args) = @_;
    return if not $self->{IS_GD};
-   return $self->gdfx(@_);
+   return $self->gdfx( @args );
 }
 
 sub random_angle {
@@ -149,7 +177,7 @@ sub random_angle {
    return $r[int rand @r];
 }
 
-sub random_str { shift->{_RANDOM_NUMBER_} }
+sub random_str { return shift->{_RANDOM_NUMBER_} }
 
 sub random {
    my $self = shift;
@@ -164,24 +192,24 @@ sub random {
          $random .= $keys[int rand $lk] for 1..$self->{rndmax};
          $self->{_RANDOM_NUMBER_} = $random;
    }
-   return $self if defined wantarray;
+   return defined wantarray ? $self : undef;
 }
 
 sub cconvert { # convert color codes
    # GD           : return color index number
    # Image::Magick: return hex color code
    my $self   = shift;
-   my $data   = shift || croak "Empty parameter passed to cconvert!";
+   my $data   = shift || croak 'Empty parameter passed to cconvert';
    return $self->backend_cconvert($data) if not $self->{IS_CORE};
 
    my $is_hex    = $self->is_hex($data);
    my $magick_ok = $self->{IS_MAGICK} && $data && $is_hex;
    # data is a hex color code and Image::Magick has hex support
    return $data if $magick_ok;
-   my $color_code = $data              &&
-                    ! $is_hex          &&
-                    ! ref($data)       &&
-                    $data !~ m{[^0-9]} &&
+   my $color_code = $data                 &&
+                    ! $is_hex             &&
+                    ! ref($data)          &&
+                    $data !~ m{[^0-9]}xms &&
                     $data >= 0;
 
    if( $color_code ) {
@@ -195,15 +223,20 @@ sub cconvert { # convert color codes
    }
 
    my @rgb = $self->h2r($data);
-   return $data if @rgb && $self->{IS_MAGICK};
+   return @rgb && $self->{IS_MAGICK}
+         ? $data
+         : $self->_cconvert_new( $data, @rgb );
+}
 
+sub _cconvert_new {
+   my($self, $data, @rgb) = @_;
    $data = [@rgb] if @rgb;
    # initialize if not valid
-   if(not $data || not ref $data || ref $data ne 'ARRAY' || $#{$data} != 2) {
+   if(! $data || ! ref $data || ref $data ne 'ARRAY' || $#{$data} != 2) {
       $data = [0, 0, 0];
    }
    foreach my $i (0..$#{$data}) { # check for bad values
-      if ($data->[$i] > 255 or $data->[$i] < 0) {
+      if ( $data->[$i] > MAX_RGB_VALUE || $data->[$i] < 0 ) {
          $data->[$i] = 0;
       }
    }
@@ -227,10 +260,10 @@ sub create {
 
    # be a smart module and auto-disable ttf if we are under a prehistoric GD
    if ( not $self->{IS_MAGICK} ) {
-      $method = 'normal' if $self->_versionlt(1.20);
+      $method = 'normal' if $self->_versionlt( '1.20' );
    }
 
-   if($method eq 'normal' and not $self->{gd_font}) {
+   if ( $method eq 'normal' && ! $self->{gd_font} ) {
       $self->{gd_font} = $self->gdf('giant');
    }
 
@@ -248,37 +281,36 @@ sub create {
    }
 
    $self->{_CREATECALLED_}++;
-   return $self if defined wantarray;
+   return defined wantarray ? $self : undef;
 }
 
 sub particle {
    # Create random dots. They'll cover all over the surface
    my $self = shift;
-   croak "particle() must be called 'after' create()" if not $self->{_CREATECALLED_};
+   croak q{particle() must be called 'after' create()} if !$self->{_CREATECALLED_};
    my $big  = $self->{height} > $self->{width} ? $self->{height} : $self->{width};
-   my $f    = shift || $big * 20; # particle density
+   my $f    = shift || $big * PARTICLE_MULTIPLIER; # particle density
    my $dots = shift || 1; # number of multiple dots
-   my $int  = int $big / 20;
+   my $int  = int $big / PARTICLE_MULTIPLIER;
 
    if ( ! $int ) { # RT#33629
-      warn "particle(): image dimension is so small to add particles";
+      warn "particle(): image dimension is so small to add particles\n";
       return;
    }
 
    my @random;
-   for (my $x = $int; $x <= $big; $x += $int) {
+   for (my $x = $int; $x <= $big; $x += $int) { ## no critic (ControlStructures::ProhibitCStyleForLoops)
       push @random, $x;
    }
 
    my $tc  = $self->{_COLOR_}{text};
    my $len = @random;
    my $r   = sub { $random[ int rand $len ] };
-   my($x, $y, $z);
 
-   for (1..$f) {
-      $x = int rand $self->{width};
-      $y = int rand $self->{height};
-      foreach $z (1..$dots) {
+   for ( 1..$f ) {
+      my $x = int rand $self->{width};
+      my $y = int rand $self->{height};
+      foreach my $z (1..$dots) {
          $self->setPixel($x + $z         , $y + $z         , $tc);
          $self->setPixel($x + $z + $r->(), $y + $z + $r->(), $tc);
       }
@@ -286,10 +318,10 @@ sub particle {
    undef @random;
    undef $r;
 
-   return $self if defined wantarray;
+   return defined wantarray ? $self : undef;
 }
 
-sub raw { $_[0]->{image} } # raw image object
+sub raw { return shift->{image} } # raw image object
 
 sub info_text { # set text location
    # x      => 'left|right',  # text-X
@@ -300,34 +332,49 @@ sub info_text { # set text location
    # color  => '#000000',     # text color
    # scolor => '#FFFFFF',     # strip color
    # text   => 'blah',        # modifies random code
-   my $self = shift;
-   croak "info_text() must be called 'after' create()" if not $self->{_CREATECALLED_};
-   my %o = scalar(@_) % 2 ? () : ( qw/ x right y up strip 1 /, @_ );
+   my($self, @args) = @_;
+   croak q{info_text() must be called 'after' create()} if ! $self->{_CREATECALLED_};
+   my %o = @args % 2 ? () : ( qw/ x right y up strip 1 /, @args );
    return if not %o;
 
    $self->{_TEXT_LOCATION_}{_place_} = 1;
    $o{scolor}                        = $self->cconvert($o{scolor})       if $o{scolor};
-   local $self->{_RANDOM_NUMBER_}    = delete $o{text}                   if $o{text};
-   local $self->{_COLOR_}{text}      = $self->cconvert(delete $o{color}) if $o{color};
-   local $self->{ptsize}             = delete $o{ptsize}                 if $o{ptsize};
 
-   local $self->{scramble} = 0; # disable. we need a straight text
-   local $self->{angle}    = 0; # disable. RT:14618
+   my %restore = (
+      random   => $self->{_RANDOM_NUMBER_},
+      color    => $self->{_COLOR_}{text},
+      ptsize   => $self->{ptsize},
+      scramble => $self->{scramble},
+      angle    => $self->{angle},
+   );
+
+   $self->{_RANDOM_NUMBER_}    = delete $o{text}                   if $o{text};
+   $self->{_COLOR_}{text}      = $self->cconvert(delete $o{color}) if $o{color};
+   $self->{ptsize}             = delete $o{ptsize}                 if $o{ptsize};
+   $self->{scramble}           = 0; # disable. we need a straight text
+   $self->{angle}              = 0; # disable. RT:14618
 
    $self->{_TEXT_LOCATION_}->{$_} = $o{$_} foreach keys %o;
    $self->insert_text('ttf');
-   $self;
+
+   # restore
+   $self->{_RANDOM_NUMBER_}    = $restore{random};
+   $self->{_COLOR_}{text}      = $restore{color};
+   $self->{ptsize}             = $restore{ptsize};
+   $self->{scramble}           = $restore{scramble};
+   $self->{angle}              = $restore{angle};
+
+   return $self;
 }
 
 #--------------------[ PRIVATE ]--------------------#
 
 sub add_strip { # adds a strip to the background of the text
-   my $self = shift;
-   my($x, $y, $box_w, $box_h) = @_;
+   my($self, $x, $y, $box_w, $box_h) = @_;
    my $tl    = $self->{_TEXT_LOCATION_};
    my $c     = $self->{_COLOR_} || {};
-   my $black = $self->cconvert( $c->{text}    ? $c->{text}    : [   0,   0,   0 ] );
-   my $white = $self->cconvert( $tl->{scolor} ? $tl->{scolor} : [ 255, 255, 255 ] );
+   my $black = $self->cconvert( $c->{text}    ? $c->{text}    : [ RGB_BLACK ] );
+   my $white = $self->cconvert( $tl->{scolor} ? $tl->{scolor} : [ RGB_WHITE ] );
    my $x2    = $tl->{x} eq 'left' ? $box_w : $self->{width};
    my $y2    = $self->{height} - $box_h;
    my $i     = $self->{IS_MAGICK} ? $self  : $self->{image};
@@ -340,11 +387,11 @@ sub add_strip { # adds a strip to the background of the text
 
 sub r2h {
    # Convert RGB to Hex
-   my $self = shift;
-   @_ == 3 || return;
-   my $color  = '#';
-      $color .= sprintf("%02x", $_) foreach @_;
-      $color;
+   my($self, @args) = @_;
+   return if @args != MAX_RGB_PARAMS;
+   my $color  = q{#};
+      $color .= sprintf '%02x', $_ foreach @args;
+   return $color;
 }
 
 sub h2r {
@@ -352,26 +399,15 @@ sub h2r {
    my $self  = shift;
    my $color = shift;
    return if ref $color;
-   my @rgb   = $color =~ m[^#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})$]i;
+   my @rgb   = $color =~ m/\A \#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2}) \z/xmsi;
    return @rgb ? map { hex $_ } @rgb : undef;
 }
 
 sub is_hex {
    my $self = shift;
    my $data = shift;
-   return $data =~ m[^#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})$]i;
+   return $data =~ m/ \A \#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2}) \z /xmsi;
 }
-
-sub AUTOLOAD {
-   my $self  = shift;
-   my $class = ref $self;
-   (my $name = $AUTOLOAD) =~ s,.*:,,;
-   # fake method for GD compatibility. only GD has this
-   return 0 if $name eq 'gdbox_empty';
-   croak "Unknown $class method '$name'";
-}
-
-sub DESTROY {}
 
 1;
 
@@ -386,24 +422,28 @@ GD::SecurityImage - Security image (captcha) generator.
    use GD::SecurityImage;
 
    # Create a normal image
-   my $image = GD::SecurityImage->new(width   => 80,
-                                      height  => 30,
-                                      lines   => 10,
-                                      gd_font => 'giant');
-      $image->random($your_random_str);
-      $image->create(normal => 'rect');
+   my $image = GD::SecurityImage->new(
+                  width   => 80,
+                  height  => 30,
+                  lines   => 10,
+                  gd_font => 'giant',
+               );
+      $image->random( $your_random_str );
+      $image->create( normal => 'rect' );
    my($image_data, $mime_type, $random_number) = $image->out;
 
 or
 
    # use external ttf font
-   my $image = GD::SecurityImage->new(width    => 100,
-                                      height   => 40,
-                                      lines    => 10,
-                                      font     => "/absolute/path/to/your.ttf",
-                                      scramble => 1);
-      $image->random($your_random_str);
-      $image->create(ttf => 'default');
+   my $image = GD::SecurityImage->new(
+                  width    => 100,
+                  height   => 40,
+                  lines    => 10,
+                  font     => "/absolute/path/to/your.ttf",
+                  scramble => 1,
+               );
+      $image->random( $your_random_str );
+      $image->create( ttf => 'default' );
       $image->particle;
    my($image_data, $mime_type, $random_number) = $image->out;
 
@@ -1370,19 +1410,5 @@ If you like or hate or have some suggestions about
 C<GD::SecurityImage>, you can comment/rate the distribution via 
 the C<CPAN Ratings> system: 
 L<http://cpanratings.perl.org/dist/GD-SecurityImage>.
-
-=head1 AUTHOR
-
-Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
-
-=head1 COPYRIGHT
-
-Copyright 2004-2008 Burak GE<252>rsoy. All rights reserved.
-
-=head1 LICENSE
-
-This library is free software; you can redistribute it and/or modify 
-it under the same terms as Perl itself, either Perl version 5.8.8 or, 
-at your option, any later version of Perl 5 you may have available.
 
 =cut

@@ -1,17 +1,20 @@
 #!/usr/bin/env perl -w
 use strict;
+use warnings;
 use vars qw( $MAGICK_SKIP );
-use Test;
+use Test::More;
 use Cwd;
+use Carp qw( croak );
+use lib  qw( .. );
+use constant TOTAL_TESTS => 6;
 
 BEGIN {
-   do 't/magick.pl' || die "Can not include t/magick.pl: $!";
+   do 't/magick.pl' || croak "Can not include t/magick.pl: $!";
 
-   my $TOTAL = 6;
-   plan tests => $TOTAL;
+   plan tests => TOTAL_TESTS;
 
    if ( $MAGICK_SKIP ) {
-      skip( $MAGICK_SKIP . " Skipping...", sub{1}) for 1..$TOTAL;
+      skip( $MAGICK_SKIP . ' Skipping...', sub{1}) for 1..TOTAL_TESTS;
       exit;
    }
    else {
@@ -22,15 +25,15 @@ BEGIN {
 
 my $i = GD::SecurityImage->new;
 
-my $gt = $i->_versiongt(6.0);
+my $gt = $i->_versiongt('6.0');
 my $lt = $i->_versionlt('6.4.3');
-ok( defined $gt );
-ok( defined $lt );
+ok( defined $gt, 'GT defined' );
+ok( defined $lt, 'LT defined' );
 
 GT: {
    local $Image::Magick::VERSION = '6.0.3';
-   ok( $i->_versiongt(  6.0    ) );
-   ok( $i->_versiongt( '6.0.3' ) );
-   ok( $i->_versionlt(  6.2    ) );
-   ok( $i->_versionlt( '6.2.6' ) );
+   ok( $i->_versiongt( '6.0'   ), 'GT 6.0'   );
+   ok( $i->_versiongt( '6.0.3' ), 'GT 6.0.3' );
+   ok( $i->_versionlt( '6.2'   ), 'LT 6.2'   );
+   ok( $i->_versionlt( '6.2.6' ), 'LT 6.2.6' );
 }

@@ -15,8 +15,13 @@ print qq~
 
 {
     module_name    => 'GD::SecurityImage',
-    requires       => { 'GD'            => 0      },
-    recommends     => { 'Image::Magick' => '6.0.4'},
+    requires       => {
+        'GD' => 0,
+        ( $] < 5.006 ? ( 'warnings::compat' => 0 ) : ()),
+    },
+    recommends => {
+        'Image::Magick' => '6.0.4',
+    },
     meta_merge => {
         resources => {
             repository => 'http://bitbucket.org/burak/cpan-gd-securityimage/',

@@ -1,5 +1,6 @@
 package GD::SecurityImage::GD;
 use strict;
+use warnings;
 use vars qw( $VERSION );
 
 use constant LOWLEFTX    => 0; # Lower left  corner x
@@ -23,12 +24,21 @@ use constant NEWSTUFF    => qw( ellipse setThickness _png_compression );
 use constant FORMATS     => qw( png gif jpeg );
 use constant GDFONTS     => qw( Small Large MediumBold Tiny Giant );
 
+use constant RGB_WHITE   => (255, 255, 255);
+use constant BOX_SIZE    => 7;
+
+use constant ROTATE_NONE             =>   0;
+use constant ROTATE_COUNTERCLOCKWISE =>  90;
+use constant ROTATE_UPSIDEDOWN       => 180;
+use constant ROTATE_CLOCKWISE        => 270;
+use constant FULL_CIRCLE             => 360;
+
 use GD;
 
-$VERSION = '1.50';
+$VERSION = '1.71';
 
 # define the tff drawing method.
-my $TTF = __PACKAGE__->_versiongt( 1.31 ) ? 'stringFT' : 'stringTTF';
+my $TTF = __PACKAGE__->_versiongt( '1.31' ) ? 'stringFT' : 'stringTTF';
 
 sub init {
    # Create the image object
@@ -36,17 +46,18 @@ sub init {
    $self->{image} = GD::Image->new($self->{width}, $self->{height});
    $self->cconvert($self->{bgcolor}); # set background color
    $self->setThickness($self->{thickness}) if $self->{thickness};
-   if ( $self->_versionlt(2.07) ) {
+   if ( $self->_versionlt( '2.07' ) ) {
       foreach my $prop ( NEWSTUFF ) {
          $self->{DISABLED}{$prop} = 1;
       }
    }
+   return;
 }
 
 sub out {
    # return $image_data, $image_mime_type, $random_number
-   my $self = shift;
-   my %opt  = scalar @_ % 2 ? () : (@_);
+   my($self, @args) = @_;
+   my %opt  = @args % 2 ? () : @args;
    my $i    = $self->{image};
    my $type;
    if ( $opt{force} && $i->can($opt{force}) ){
@@ -61,15 +72,16 @@ sub out {
          }
       }
    }
-   my @args = ();
+
+   my @iargs = ();
    if ( $opt{'compress'} ) {
-      push @args, MAXCOMPRESS      if $type eq 'png' and not $self->{DISABLED}{_png_compression};
-      push @args, $opt{'compress'} if $type eq 'jpeg';
+      push @iargs, MAXCOMPRESS      if $type eq 'png' and not $self->{DISABLED}{_png_compression};
+      push @iargs, $opt{'compress'} if $type eq 'jpeg';
    }
-   return $i->$type(@args), $type, $self->{_RANDOM_NUMBER_};
+   return $i->$type(@iargs), $type, $self->{_RANDOM_NUMBER_};
 }
 
-sub gdbox_empty { $_[0]->{GDBOX_EMPTY} }
+sub gdbox_empty { return shift->{GDBOX_EMPTY} }
 
 sub gdfx {
    # Sets the font for simple GD usage. 
@@ -85,37 +97,20 @@ sub gdfx {
    }
 }
 
-sub insert_text {
-   # Draw text using GD
-   my $self   = shift;
-   my $method = shift;
-   my $key    = $self->{_RANDOM_NUMBER_}; # random string
-   my $ctext  = $self->{_COLOR_}{text};
-   if ($method eq 'ttf') {
-      require Math::Trig;
-      # don' t draw. we just need info...
-      my $info = sub {
-         my $txt = shift;
-         my $ang = shift || 0;
-            $ang = Math::Trig::deg2rad($ang) if $ang;
-         my @box = GD::Image->$TTF( $ctext, $self->{font}, $self->{ptsize}, $ang, 0, 0, $txt );
-         if ( not @box ) { # use fake values instead of die-ing
-            $self->{GDBOX_EMPTY} = 1; # set this for error checking.
-            $#box    = 7;
-            # lets initialize to silence the warnings
-            $box[$_] = 1 for 0..$#box;
-         }
-         return @box;
-      };
-      if ( $self->{scramble} ) {
+sub _insert_text_ttf_scramble {
+   my($self, $key, $ctext) = @_;
+   require Math::Trig;
+
          my @char;
          my $anglex;
          my $total = 0;
-         my $space = [$self->ttf_info(0, 'A'),0,'  '];
+         my $space = [ $self->ttf_info( 0, 'A' ), 0, q{  } ];
          my @randomy;
          my $sy = $space->[CHY] || 1;
-         push(@randomy,  $_, - $_) foreach $sy*1.2,$sy, $sy/2, $sy/4, $sy/8;
-         foreach (split //, $key) { # get char parameters
+         ## no critic (ValuesAndExpressions::ProhibitMagicNumbers)
+         push @randomy,  $_, - $_ foreach $sy*1.2,$sy, $sy/2, $sy/4, $sy/8;
+         ## use critic
+         foreach (split m{}xms, $key) { # get char parameters
             $anglex = $self->random_angle;
             $total += $space->[CHX];
             push @char, [$self->ttf_info($anglex, $_), $anglex, $_], $space, $space, $space;
@@ -130,87 +125,132 @@ sub insert_text {
             $self->{image}->$TTF(@config, Math::Trig::deg2rad($box->[CHAR]), $x, $y, $box->[ANGLE]);
             $total -= $space->[CHX];
          }
+   return;
+}
+
+sub _insert_text_ttf_normal {
+   my($self, $key, $ctext) = @_;
+   require Math::Trig;
+   # don' t draw. we just need info...
+   my $info = sub {
+      my $txt = shift;
+      my $ang = shift || 0;
+         $ang = Math::Trig::deg2rad($ang) if $ang;
+      my @box = GD::Image->$TTF(
+                  $ctext, $self->{font}, $self->{ptsize}, $ang, 0, 0, $txt
+               );
+      if ( not @box ) { # use fake values instead of die-ing
+         $self->{GDBOX_EMPTY} = 1; # set this for error checking.
+         $#box = BOX_SIZE;
+         # lets initialize to silence the warnings
+         $box[$_] = 1 for 0..$#box;
+      }
+      return @box;
+   };
+
+   my(@box, $x, $y);
+   my $tl = $self->{_TEXT_LOCATION_};
+   if ( $tl->{_place_} ) {
+      # put the text to one of the four corners in the image
+      my $white = $self->cconvert( [ RGB_WHITE ] );
+      my $black = $self->cconvert($ctext);
+      if ( $tl->{gd} ) { # draw with standard gd fonts
+         $self->place_gd($key, $tl->{x}, $tl->{y});
+         return; # by-pass ttf method call...
       }
       else {
-         my(@box,$x,$y);
-         my $tl = $self->{_TEXT_LOCATION_};
-         if ($tl->{_place_}) {
-            # put the text to one of the four corners in the image
-            my $white = $self->cconvert([255,255,255]);
-            my $black = $self->cconvert($ctext);
-            if ( $tl->{gd} ) { # draw with standard gd fonts
-               $self->place_gd($key, $tl->{x}, $tl->{y});
-               return; # by-pass ttf method call...
-            }
-            else {
-               @box = $info->($key);
-               $x   = $tl->{x} eq 'left'? 0                                : ($self->{width}  - ($box[LOWRIGHTX] - $box[LOWLEFTX]));
-               $y   = $tl->{y} eq 'up'  ? ($box[LOWLEFTY] - $box[UPLEFTY]) :  $self->{height}-2;
-               if ($tl->{strip}) {
-                  $self->add_strip($x, $y, $box[LOWRIGHTX] - $box[LOWLEFTX], $box[LOWLEFTY] - $box[UPLEFTY]);
-               }
-            }
+         @box = $info->($key);
+         $x   = $tl->{x} eq 'left'
+               ? 0
+               : ( $self->{width} - ($box[LOWRIGHTX] - $box[LOWLEFTX]) )
+               ;
+         $y   = $tl->{y} eq 'up'
+               ? ( $box[LOWLEFTY] - $box[UPLEFTY] )
+               :  $self->{height} - 2
+               ;
+         if ($tl->{strip}) {
+            $self->add_strip(
+               $x, $y, $box[LOWRIGHTX] - $box[LOWLEFTX], $box[LOWLEFTY] - $box[UPLEFTY]
+            );
          }
-         else {
-            @box = $info->($key);
-            $x = ($self->{width}  - ($box[LOWRIGHTX] - $box[LOWLEFTX])) / 2;
-            $y = ($self->{height} - ($box[UPLEFTY]   - $box[LOWLEFTY])) / 2;
-         }
-         # this needs a fix. adjust x,y
-         if ($self->{angle}) {
-            require Math::Trig;
-            $self->{angle} = Math::Trig::deg2rad($self->{angle});
-         }
-         else {
-            $self->{angle} = 0;
-         }
-         $self->{image}->$TTF($ctext, $self->{font}, $self->{ptsize}, $self->{angle}, $x, $y, $key);
       }
    }
    else {
-      if ($self->{scramble}) {
-         # without ttf, we can only have 0 and 90 degrees.
-         my @char;
-         my @styles = qw(string stringUp);
-         my $style  = $styles[int rand @styles];
-         foreach (split //, $key) { # get char parameters
-            push @char, [$_, $style], [' ','string'];
-            $style = $style eq 'string' ? 'stringUp' : 'string';
-         }
-         my $sw = $self->{gd_font}->width;
-         my $sh = $self->{gd_font}->height;
-         my($x, $y, $m);
-         my $total = $sw * @char;
-         foreach my $c (@char) {
-            $m = $c->[1];
-            $x = ($self->{width}  - $total) / 2;
-            $y = $self->{height}/2 + ($m eq 'string' ? -$sh : $sh/2) / 2;
-            $total -= $sw * 2;
-            $self->{image}->$m($self->{gd_font}, $x, $y, $c->[0], $ctext);
-         }
-      }
-      else {
-         my $sw = $self->{gd_font}->width * length($key);
-         my $sh = $self->{gd_font}->height;
-         my $x  = ($self->{width}  - $sw) / 2;
-         my $y  = ($self->{height} - $sh) / 2;
-         $self->{image}->string($self->{gd_font}, $x, $y, $key, $ctext);
-      }
+      @box = $info->($key);
+      $x   = ($self->{width}  - ($box[LOWRIGHTX] - $box[LOWLEFTX])) / 2;
+      $y   = ($self->{height} - ($box[UPLEFTY]   - $box[LOWLEFTY])) / 2;
    }
+
+   # this needs a fix. adjust x,y
+   $self->{angle} = $self->{angle} ? Math::Trig::deg2rad($self->{angle}) : 0;
+   $self->{image}->$TTF( $ctext, $self->{font}, $self->{ptsize}, $self->{angle}, $x, $y, $key );
+   return;
+}
+
+sub _insert_text_gd_scramble {
+   my($self, $key, $ctext) = @_;
+   # without ttf, we can only have 0 and 90 degrees.
+   my @char;
+   my @styles = qw(string stringUp);
+   my $style  = $styles[int rand @styles];
+   foreach (split m{}xms, $key) { # get char parameters
+      push @char, [ $_, $style ], [ q{ }, 'string' ];
+      $style = $style eq 'string' ? 'stringUp' : 'string';
+   }
+   my $sw = $self->{gd_font}->width;
+   my $sh = $self->{gd_font}->height;
+   my($x, $y, $m);
+   my $total = $sw * @char;
+   foreach my $c (@char) {
+      $m = $c->[1];
+      $x = ($self->{width}  - $total) / 2;
+      $y = $self->{height}/2 + ($m eq 'string' ? -$sh : $sh/2) / 2;
+      $total -= $sw * 2;
+      $self->{image}->$m($self->{gd_font}, $x, $y, $c->[0], $ctext);
+   }
+   return;
+}
+
+sub _insert_text_gd_normal {
+   my($self, $key, $ctext) = @_;
+   my $sw = $self->{gd_font}->width * length $key;
+   my $sh = $self->{gd_font}->height;
+   my $x  = ($self->{width}  - $sw) / 2;
+   my $y  = ($self->{height} - $sh) / 2;
+   $self->{image}->string($self->{gd_font}, $x, $y, $key, $ctext);
+   return;
+}
+
+sub insert_text {
+   # Draw text using GD
+   my $self   = shift;
+   my $method = shift;
+   my $key    = $self->{_RANDOM_NUMBER_};
+   my $ctext  = $self->{_COLOR_}{text};
+   if ($method eq 'ttf') {
+      $self->{scramble} ? $self->_insert_text_ttf_scramble( $key, $ctext )
+                        : $self->_insert_text_ttf_normal(   $key, $ctext )
+                        ;
+   }
+   else {
+      $self->{scramble} ? $self->_insert_text_gd_scramble( $key, $ctext )
+                        : $self->_insert_text_gd_normal(   $key, $ctext )
+                        ;
+   }
+   return;
 }
 
 sub place_gd {
-   my $self  = shift;
-   my($key, $tX, $tY) = @_;
+   my($self, $key, $tx, $ty) = @_;
    my $tl    = $self->{_TEXT_LOCATION_};
    my $black = $self->cconvert($self->{_COLOR_}{text});
    my $white = $self->cconvert($tl->{scolor});
    my $font  = GD::Font->Tiny;
    my $fx    = (length($key)+1)*$font->width;
    my $x1    = $self->{width} - $fx;
-   my $y1    = $tY eq 'up' ? 0 : $self->{height} - $font->height;
-   if ($tY eq 'up') {
-      if($tX eq 'left') {
+   my $y1    = $ty eq 'up' ? 0 : $self->{height} - $font->height;
+   if ($ty eq 'up') {
+      if($tx eq 'left') {
          $self->filledRectangle(0, $y1  , $fx  , $font->height+2, $black);
          $self->filledRectangle(1, $y1+1, $fx-1, $font->height+1, $white);
       }
@@ -220,7 +260,7 @@ sub place_gd {
       }
    }
    else {
-      if($tX eq 'left') {
+      if($tx eq 'left') {
          $self->filledRectangle(0, $y1-2, $fx  , $self->{height}  , $black);
          $self->filledRectangle(1    , $y1-1, $fx-1, $self->{height}-2, $white);
       }
@@ -229,73 +269,127 @@ sub place_gd {
          $self->filledRectangle($x1-$font->width    , $y1-1, $self->{width}-2, $self->{height}-2, $white);
       }
    }
-   $self->{image}->string($font, $tX eq 'left' ? 2 : $x1, $tY eq 'up' ? $y1+1 : $y1-1, $key, $self->{_COLOR_}{text});
+   return $self->{image}->string(
+            $font,
+            $tx eq 'left' ? 2     : $x1,
+            $ty eq 'up'   ? $y1+1 : $y1-1,
+            $key,
+            $self->{_COLOR_}{text}
+         );
 }
 
 sub ttf_info {
    my $self  = shift;
    my $angle = shift || 0;
    my $text  = shift;
-   my $x     = 0;
-   my $y     = 0;
-   my @box   = GD::Image->$TTF(
-      $self->{_COLOR_}{text},
-      $self->{font},
-      $self->{ptsize},
-      Math::Trig::deg2rad($angle),
-      0,
-      0,
-      $text
-   );
+   require Math::Trig;
+   my @box = GD::Image->$TTF(
+               $self->{_COLOR_}{text},
+               $self->{font},
+               $self->{ptsize},
+               Math::Trig::deg2rad($angle),
+               0,
+               0,
+               $text
+            );
    if ( not @box ) { # use fake values instead of die-ing
       $self->{GDBOX_EMPTY} = 1; # set this for error checking.
-      $#box    = 7;
+      $#box = BOX_SIZE;
       # lets initialize to silence the warnings
       $box[$_] = 1 for 0..$#box;
    }
-   my $bx    = $box[LOWLEFTX] - $box[LOWRIGHTX];
-   my $by    = $box[LOWLEFTY] - $box[LOWRIGHTY];
 
-   if($angle == 0 or $angle == 180 or $angle == 360) {
-      $by  = $box[  UPLEFTY ] - $box[LOWLEFTY ];
-   } elsif ($angle == 90 or $angle == 270) {
-      $bx  = $box[  UPLEFTX ] - $box[LOWLEFTX ];
-   } elsif($angle > 270 and $angle < 360) {
-      $bx  = $box[ LOWLEFTX ] - $box[ UPLEFTX ];
-   } elsif ($angle > 180 and $angle < 270) {
-      $by  = $box[ LOWLEFTY ] - $box[LOWRIGHTY];
-      $bx  = $box[ LOWRIGHTX] - $box[ UPRIGHTX];
-   } elsif($angle > 90 and $angle < 180) {
-      $bx  = $box[ LOWRIGHTX] - $box[ LOWLEFTX];
-      $by  = $box[ LOWRIGHTY] - $box[ UPRIGHTY];
-   } elsif ($angle > 0 and $angle < 90) {
-      $by  = $box[  UPLEFTY ] - $box[ LOWLEFTY];
-   } else {}
+   return $self->_ttf_info_xy( $angle, \@box );
+}
 
-      if ($angle ==   0                 ) { $x += $bx/2; $y -= $by/2; }
-   elsif ($angle >    0 and $angle < 90 ) { $x += $bx/2; $y -= $by/2; }
-   elsif ($angle ==  90                 ) { $x -= $bx/2; $y += $by/2; }
-   elsif ($angle >   90 and $angle < 180) { $x -= $bx/2; $y += $by/2; }
-   elsif ($angle == 180                 ) { $x += $bx/2; $y -= $by/2; }
-   elsif ($angle >  180 and $angle < 270) { $x += $bx/2; $y += $by/2; }
-   elsif ($angle == 270                 ) { $x -= $bx/2; $y += $by/2; }
-   elsif ($angle >  270 and $angle < 360) { $x += $bx/2; $y += $by/2; }
-   elsif ($angle == 360                 ) { $x += $bx/2; $y -= $by/2; }
+sub _ttf_info_xy {
+   my($self, $angle, $box) = @_;
+   my $rnone = ROTATE_NONE;
+   my $rccw  = ROTATE_COUNTERCLOCKWISE;
+   my $rusd  = ROTATE_UPSIDEDOWN;
+   my $rcw   = ROTATE_CLOCKWISE;
+   my $fc    = FULL_CIRCLE;
+
+   my $x     = 0;
+   my $y     = 0;
+
+   my($bx, $by) = $self->_ttf_info_box_xy( $angle, $box );
+
+     $angle == $rnone                   ? do { $x += $bx/2; $y -= $by/2; }
+   : $angle >  $rnone && $angle < $rccw ? do { $x += $bx/2; $y -= $by/2; }
+   : $angle == $rccw                    ? do { $x -= $bx/2; $y += $by/2; }
+   : $angle >  $rccw  && $angle < $rusd ? do { $x -= $bx/2; $y += $by/2; }
+   : $angle == $rusd                    ? do { $x += $bx/2; $y -= $by/2; }
+   : $angle >  $rusd  && $angle < $rcw  ? do { $x += $bx/2; $y += $by/2; }
+   : $angle == $rcw                     ? do { $x -= $bx/2; $y += $by/2; }
+   : $angle >  $rcw   && $angle < $fc   ? do { $x += $bx/2; $y += $by/2; }
+   : $angle == $fc                      ? do { $x += $bx/2; $y -= $by/2; }
+   :                                      do {}
+   ;
    return $x, $y;
 }
 
-sub setPixel        { shift->{image}->setPixel(@_)        }
-sub line            { shift->{image}->line(@_)            }
-sub rectangle       { shift->{image}->rectangle(@_)       }
-sub filledRectangle { shift->{image}->filledRectangle(@_) }
-sub ellipse         { shift->{image}->ellipse(@_)         }
-sub arc             { shift->{image}->arc(@_)             }
+sub _ttf_info_box_xy {
+   my($self, $angle, $box) = @_;
+   my $bx    = $box->[LOWLEFTX] - $box->[LOWRIGHTX];
+   my $by    = $box->[LOWLEFTY] - $box->[LOWRIGHTY];
 
-sub setThickness {
-   my $self = shift;
-   if($self->{image}->can('setThickness')) { # $GD::VERSION >= 2.07
-      $self->{image}->setThickness(@_);
+   my $rnone = ROTATE_NONE;
+   my $rccw  = ROTATE_COUNTERCLOCKWISE;
+   my $rusd  = ROTATE_UPSIDEDOWN;
+   my $rcw   = ROTATE_CLOCKWISE;
+   my $fc    = FULL_CIRCLE;
+
+   my $is_perp = $angle == $rnone || $angle == $rusd || $angle == $fc;
+
+     $is_perp                             ? do { $by = $box->[  UPLEFTY ] - $box->[LOWLEFTY ]; }
+   : $angle == $rccw  || $angle == $rcw   ? do { $bx = $box->[  UPLEFTX ] - $box->[LOWLEFTX ]; }
+   : $angle >  $rcw   && $angle <  $fc    ? do { $bx = $box->[ LOWLEFTX ] - $box->[ UPLEFTX ]; }
+   : $angle >  $rusd  && $angle <  $rcw   ? do { $bx = $box->[ LOWRIGHTX] - $box->[ UPRIGHTX]; $by = $box->[ LOWLEFTY ] - $box->[LOWRIGHTY]; }
+   : $angle >  $rccw  && $angle <  $rusd  ? do { $bx = $box->[ LOWRIGHTX] - $box->[ LOWLEFTX]; $by = $box->[ LOWRIGHTY] - $box->[ UPRIGHTY]; }
+   : $angle >  $rnone && $angle <  $rccw  ? do { $by = $box->[  UPLEFTY ] - $box->[ LOWLEFTY]; }
+   :                                        do {}
+   ;
+
+   return $bx, $by;
+}
+
+sub setPixel { ## no critic (NamingConventions::Capitalization)
+   my($self, @args) = @_;
+   return $self->{image}->setPixel(@args);
+}
+
+sub line {
+   my($self, @args) = @_;
+   return $self->{image}->line(@args);
+}
+
+sub rectangle {
+   my($self, @args) = @_;
+   return $self->{image}->rectangle(@args);
+}
+
+sub filledRectangle { ## no critic (NamingConventions::Capitalization)
+   my($self, @args) = @_;
+   return $self->{image}->filledRectangle(@args);
+}
+
+sub ellipse {
+   my($self, @args) = @_;
+   return $self->{image}->ellipse(@args);
+}
+
+sub arc {
+   my($self, @args) = @_;
+   return $self->{image}->arc(@args);
+}
+
+sub setThickness { ## no critic (NamingConventions::Capitalization)
+   my($self, @args) = @_;
+   if( $self->{image}->can('setThickness') ) { # $GD::VERSION >= 2.07
+      $self->{image}->setThickness( @args );
    }
+   return;
 }
 
 sub _versiongt {
@@ -361,19 +455,5 @@ Used internally by L<GD::SecurityImage>. Nothing public here.
 =head1 SEE ALSO
 
 L<GD::SecurityImage>.
-
-=head1 AUTHOR
-
-Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
-
-=head1 COPYRIGHT
-
-Copyright 2004-2008 Burak GE<252>rsoy. All rights reserved.
-
-=head1 LICENSE
-
-This library is free software; you can redistribute it and/or modify 
-it under the same terms as Perl itself, either Perl version 5.8.8 or, 
-at your option, any later version of Perl 5 you may have available.
 
 =cut
