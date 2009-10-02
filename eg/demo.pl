@@ -10,8 +10,8 @@ use CGI  qw( header escapeHTML );
 use Cwd;
 use Carp qw( croak );
 use constant SALT_RANDOM   => 100;
-use constant MAGICK_PTSIZE => 12;
-use constant GD_PTSIZE     =>  8;
+use constant MAGICK_PTSIZE =>  12;
+use constant GD_PTSIZE     =>   8;
 
 my %config = (
    database   => 'gdsi',                 # database name (for session storage)
