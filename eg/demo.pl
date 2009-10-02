@@ -5,7 +5,7 @@
 package Demo;
 use strict;
 use warnings;
-use vars qw( $VERSION  );
+use vars qw( $VERSION );
 use CGI  qw( header escapeHTML );
 use Cwd;
 use Carp qw( croak );
@@ -64,15 +64,6 @@ BEGIN {
    }
 }
 
-local $SIG{__DIE__} = sub {
-   print header . <<"ERROR" or croak "Can not print to STDOUT: $!";
-      <h1 style="color:red;font-weight:bold"
-         >FATAL ERROR</h1>
-      @_
-ERROR
-   exit;
-};
-
 my $NOT_EXISTS = quotemeta 'Object does not exist in the data store';
 
 run() if not caller; # if you require this, you'll need to call demo::run()
@@ -107,7 +98,18 @@ sub new {
    return $self;
 }
 
+sub _config { return \%config }
+
 sub run {
+   local $SIG{__DIE__} = sub {
+      print header . <<"ERROR" or croak "Can not print to STDOUT: $!";
+         <h1 style="color:red;font-weight:bold"
+            >FATAL ERROR</h1>
+         @_
+ERROR
+      exit;
+   };
+
    my $START = Time::HiRes::time();
    my $self  = shift || __PACKAGE__->new;
 
@@ -118,8 +120,11 @@ sub run {
    $self->{program} = $config{program};
    if ( ! $self->{program} ){
       # it is possible to get the url as "demo.pl??foo=bar"
-      ($self->{program}, my @jp) = split m{\?}xms, $self->{cgi}->url;
+      my $url = $self->{cgi}->can('self_url') ? $self->{cgi}->self_url
+                                              : $self->{cgi}->url;
+      ($self->{program}, my @jp) = split m{\?}xms, $url;
    }
+
    my %options      = $self->all_options;
    my %styles       = $self->all_styles;
    my @optz         = keys %options;
@@ -147,7 +152,7 @@ sub run {
       };
    };
 
-   my $eok = eval { $create_ses->() 1; };
+   my $eok = eval { $create_ses->(); 1; };
 
    # I'm doing a little trick to by-pass exceptions if the session id
    # coming from the user no longer exists in the database. 
@@ -754,7 +759,7 @@ Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2004-2007 Burak GE<252>rsoy. All rights reserved.
+Copyright 2004-2009 Burak GE<252>rsoy. All rights reserved.
 
 =head1 LICENSE
 
