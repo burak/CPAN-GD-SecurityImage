@@ -28,14 +28,14 @@ BEGIN {
 
    plan tests => $total;
 
-   if ( $MAGICK_SKIP ) {
-      skip( $MAGICK_SKIP . ' Skipping...', sub{1}) for 1..$total;
-      exit;
-   }
-   else {
+   SKIP: {
+      if ( $MAGICK_SKIP ) {
+         skip( $MAGICK_SKIP . ' Skipping...', $total );
+      }
       require GD::SecurityImage;
       GD::SecurityImage->import( use_magick => 1 );
    }
+   exit if $MAGICK_SKIP;
 }
 
 use Test::GDSI;

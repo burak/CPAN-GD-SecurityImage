@@ -35,15 +35,13 @@ BEGIN {
       ok( $class->new->raw->isa('GD::Image' ), 'Loaded GD [2]' );
    }
 
-   $MAGICK_SKIP
-   ?  do {
-         skip( $MAGICK_SKIP . ' Skipping...', sub{1}) for 1..$total{magick};
+   SKIP: {
+      if ( $MAGICK_SKIP ) {
+         skip( $MAGICK_SKIP . ' Skipping...', $total{magick} );
       }
-   : do {
-         $class->import( use_magick => 1        );
-         ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [1]' );
-         $class->import( backend    => 'Magick' );
-         ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [2]' );
-      }
-   ;
+      $class->import( use_magick => 1        );
+      ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [1]' );
+      $class->import( backend    => 'Magick' );
+      ok( $class->new->raw->isa('Image::Magick'), 'Loaded Magick [2]' );
+   }
 }

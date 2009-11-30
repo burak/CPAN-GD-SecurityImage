@@ -13,15 +13,16 @@ BEGIN {
 
    plan tests => TOTAL_TESTS;
 
-   if ( $MAGICK_SKIP ) {
-      skip( $MAGICK_SKIP . ' Skipping...', sub{1}) for 1..TOTAL_TESTS;
-      exit;
-   }
-   else {
+   SKIP: {
+      if ( $MAGICK_SKIP ) {
+         skip( $MAGICK_SKIP . ' Skipping...', TOTAL_TESTS );
+      }
       require GD::SecurityImage;
       GD::SecurityImage->import( use_magick => 1 );
    }
 }
+
+exit if $MAGICK_SKIP;
 
 my $i = GD::SecurityImage->new;
 
