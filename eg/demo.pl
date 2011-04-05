@@ -98,7 +98,7 @@ sub new {
    return $self;
 }
 
-sub _config { return \%config }
+sub config { return \%config }
 
 sub run {
    local $SIG{__DIE__} = sub {
@@ -122,7 +122,7 @@ ERROR
       # it is possible to get the url as "demo.pl??foo=bar"
       my $url = $self->{cgi}->can('self_url') ? $self->{cgi}->self_url
                                               : $self->{cgi}->url;
-      ($self->{program}, my @jp) = split m{\?}xms, $url;
+      ($self->{program}, my @jp) = split m{[?]}xms, $url;
    }
 
    my %options      = $self->all_options;
@@ -200,8 +200,9 @@ sub process {
    my $ses  = shift || croak 'Security_code from session is missing';
    my $code = $self->{cgi}->param('code') || q{};
    my $pass = $self->iseq( $code, $ses );
-   my $meth = $pass ? '_congrats' : '_failure';
-   return $self->$meth( $code, $ses );
+   return $pass ? $self->_congrats( $code, $ses )
+                : $self->_failure(  $code, $ses )
+                ;
 }
 
 sub backenduri {
@@ -251,7 +252,7 @@ sub iseq {
    my $self = shift;
    my $form = shift || return;
    my $ses  = shift || return;
-   return if $form =~ m{[^0-9]}xms;
+   return if $form =~ m{\D}xms;
    return $form eq $ses;
 }
 
