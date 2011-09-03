@@ -557,7 +557,7 @@ Set this parameter if you want to use ttf in your image.
 
 =item gd_font
 
-If you want to use the default interface, set this paramater. The 
+If you want to use the default interface, set this parameter. The
 recognized values are C<Small>, C<Large>, C<MediumBold>, C<Tiny>, C<Giant>.
 The names are case-insensitive; you can pass lower-cased parameters.
 
@@ -609,8 +609,8 @@ The minimum length of the random string. Default value is C<6>.
 =item rnd_data
 
 Default character set used to create the random string is C<0..9>.
-But, if you want to use letters also, you can set this paramater.
-This paramater takes an array reference as the value.
+But, if you want to use letters also, you can set this parameter.
+This parameter takes an array reference as the value.
 
 B<Not necessary and will not be used if you pass your own random>
 B<string.>
@@ -719,7 +719,7 @@ This method must be called after L<create|/create>. If you call it
 early, you'll die. C<info_text> adds an extra text to the generated 
 image. You can also put a strip under the text. The purpose of this 
 method is to display additional information on the image. Copyright 
-informations can be an example for that. 
+information can be an example for that.
 
    $image->info_text(
       x      => 'right',
@@ -762,7 +762,7 @@ parameter passed to C<new> will be used instead.
 =item ptsize
 
 The ptsize value of the information text to be used with the TTF font.
-TTF font paramter can not be set with C<info_text()>. The value passed
+TTF font parameter can not be set with C<info_text()>. The value passed
 to C<new()> will be used instead.
 
 =item color
@@ -848,7 +848,7 @@ or the raw C<Image::Magick> object:
    my $magick = $image->raw;
    $magick->Write("gif:-");
 
-Can be usefull, if you want to modify the graphic yourself. If you 
+Can be useful, if you want to modify the graphic yourself. If you
 want to get an I<image type> see the C<force> option in C<out>.
 
 =head2 gdbox_empty
