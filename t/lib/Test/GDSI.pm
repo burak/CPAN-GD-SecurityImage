@@ -2,9 +2,8 @@
 package Test::GDSI;
 use strict;
 use warnings;
-use vars qw( $VERSION );
 
-$VERSION = '0.40';
+our $VERSION = '0.40';
 
 use constant GD      => defined($GD::VERSION)            ? $GD::VERSION            : 0;
 use constant MAGICK  => defined($Image::Magick::VERSION) ? $Image::Magick::VERSION : '0.0.0';

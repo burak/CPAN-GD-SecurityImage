@@ -1,11 +1,11 @@
 #!/usr/bin/perl -w
 # -> GD::SecurityImage demo program
-# -> Burak Gürsoy (c) 2004-2007. 
+# -> Burak Gursoy (c) 2004-2012. 
 # See the document section after "__END__" for license and other information.
 package Demo;
+use 5.006;
 use strict;
 use warnings;
-use vars qw( $VERSION );
 use CGI  qw( header escapeHTML );
 use Cwd;
 use Carp qw( croak );
@@ -28,9 +28,9 @@ my %config = (
 # You'll need this to create the sessions table. 
 #    CREATE TABLE sessions ( id char(32) not null primary key, a_session text )
 
-# - - - - - - - - - - - - - - > S T A R T   P R O G R A M < - - - - - - - - - - - - - - #
+# - - - - - - - - - - - - > S T A R T   P R O G R A M < - - - - - - - - - - - #
 
-$VERSION = '1.50';
+our $VERSION = '1.51';
 
 use constant REQUIREDMODS => qw(
    DBI
@@ -600,6 +600,10 @@ sub all_styles {
 
 __END__
 
+=pod
+
+=encoding utf8
+
 =head1 NAME
 
 demo.pl - GD::SecurityImage demo program.
@@ -760,7 +764,7 @@ Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2004-2009 Burak GE<252>rsoy. All rights reserved.
+Copyright 2004-2012 Burak GÃ¼rsoy. All rights reserved.
 
 =head1 LICENSE
 
