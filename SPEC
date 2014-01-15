@@ -23,7 +23,7 @@ print qq~
     },
     meta_merge => {
         resources => {
-            repository => 'http://bitbucket.org/burak/cpan-gd-securityimage/',
+            repository => 'http://github.com/burak/cpan-gd-securityimage/',
         },
     },
     BUILDER => {
