@@ -1377,7 +1377,7 @@ L<Catalyst::Plugin::Captcha>
 
 =item *
 
-L<CGI::Application::Plugin::CAPTCHA >
+L<CGI::Application::Plugin::CAPTCHA>
 
 =item *
 
