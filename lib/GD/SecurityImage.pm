@@ -19,7 +19,7 @@ use constant MAX_RGB_VALUE  => 255;
 use constant PARTICLE_MULTIPLIER => 20;
 use constant MAX_RGB_PARAMS => 3;
 
-$VERSION = '1.72';
+$VERSION = '1.73';
 
 sub import {
    my($class, @args) = @_;
