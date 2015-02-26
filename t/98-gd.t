@@ -1,7 +1,7 @@
 #!/usr/bin/env perl -w
 use strict;
 use warnings;
-use vars qw( %API );
+use vars qw( %API %API_IT );
 use Test::More;
 use Cwd;
 use Carp qw(croak);
@@ -13,19 +13,27 @@ use lib qw(
 
 BEGIN {
    %API = (
-      gd_normal                       => 6,
-      gd_ttf                          => 6,
-      gd_normal_scramble              => 6,
-      gd_ttf_scramble                 => 6,
-      gd_ttf_scramble_fixed           => 6,
-      gd_normal_info_text             => 6,
-      gd_ttf_info_text                => 6,
-      gd_normal_scramble_info_text    => 6,
-      gd_ttf_scramble_info_text       => 6,
-      gd_ttf_scramble_fixed_info_text => 6,
+      gd_normal                       => 7,
+      gd_ttf                          => 7,
+      gd_normal_scramble              => 7,
+      gd_ttf_scramble                 => 7,
+      gd_ttf_scramble_fixed           => 7,
+      gd_normal_info_text             => 7,
+      gd_ttf_info_text                => 7,
+      gd_normal_scramble_info_text    => 7,
+      gd_ttf_scramble_info_text       => 7,
+      gd_ttf_scramble_fixed_info_text => 7,
    );
+
+   %API_IT = (
+      gd_ttf_scramble_info_text       => 4,
+      gd_ttf_scramble_fixed_info_text => 4,
+   );
+
    my $total  = 0;
       $total += $API{$_} foreach keys %API;
+      $total += $API_IT{$_} foreach keys %API_IT;
+
    plan tests => $total;
    require GD::SecurityImage;
    import  GD::SecurityImage;
@@ -45,6 +53,14 @@ my %info_text = (
    scolor => '#FFFFFF',
 );
 
+my @info_text_positions = (
+  {x => 'left',  y => 'down', strip => 0, scolor => ''},
+  {x => 'left',  y => 'up',   strip => 1, scolor => '#FF0000'},
+  {x => 'right', y => 'down', strip => 1, scolor => '#00FF00'},
+  {x => 'right', y => 'up',   strip => 1, scolor => '#0000FF'},
+);
+
+# test styles
 foreach my $api (keys %API) {
    $tapi->options(args($api), extra($api));
    my $c = 1;
@@ -65,10 +81,33 @@ foreach my $api (keys %API) {
    $tapi->clear;
 }
 
+# test info text positioning
+for my $api (keys %API_IT) {
+  my $c = 1;
+   foreach my $info (@info_text_positions) {
+     $tapi->options(args($api), (extra($api, $info)));
+      ok(
+         $tapi->save(
+            $api->box->out(
+               force    => 'png',
+               compress => 1,
+            ),
+            join('_', @{$info}{qw/x y/}),
+            $api,
+            $c++
+         ),
+         "text_info position - $api - $c++"
+      );
+   }
+   $tapi->clear;
+}
+
 sub extra {
    my $name = shift;
+   my $it_opts = shift || {};
+
    if ( $name =~ m{ _info_text \z}xms ) {
-      my %extra = ( info_text => {%info_text} );
+      my %extra = ( info_text => { %info_text, %{$it_opts} });
       if ( $name =~ m{ normal }xms ) {
          $extra{info_text}->{gd} = 1;
       }

@@ -69,22 +69,13 @@ sub new {
 
    my %options = $self->_new_options( %opt );
 
-   if ( $opt{text_location}
-      && ref $opt{text_location}
-      && ref $opt{text_location} eq 'HASH' ) {
-      $self->{_TEXT_LOCATION_} = { %{$opt{text_location}}, _place_ => 1 };
-   }
-   else {
-      $self->{_TEXT_LOCATION_}{_place_} = 0;
-   }
-
    $self->{_RNDMAX_} = $options{rndmax};
 
    $self->{$_} = $options{$_} foreach keys %options;
 
    if ( $self->{angle} ) { # validate angle
       $self->{angle} = FULL_CIRCLE + $self->{angle} if $self->{angle} < 0;
-      if ( $self->{angle} > FULL_CIRCLE ) {
+      if ( $self->{angle} > FULL_CIRCLE || $self->{angle} < 0) {
          croak 'Angle parameter can take values in the range -360..360';
       }
    }
@@ -490,7 +481,7 @@ for migration from C<Authen::Captcha> to C<GD::SecurityImage>.
 This module is B<just an image generator>. Not a I<captcha handler>.
 The validation of the generated graphic is left to your programming 
 taste. But there are some I<captcha handlers> for several Perl FrameWorks.
-If you are an user of one of these frameworks, see  
+If you are a user of one of these frameworks, see
 L</"GD::SecurityImage Implementations"> in L</"SEE ALSO"> section
 for information.
 
@@ -533,7 +524,7 @@ The height of the image (in pixels).
 =item ptsize
 
 Numerical value. The point size of the ttf character. 
-Only necessarry if you want to use a ttf font in the image.
+Only necessary if you want to use a ttf font in the image.
 
 =item lines
 

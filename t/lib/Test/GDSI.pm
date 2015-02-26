@@ -21,7 +21,7 @@ sub GD::SecurityImage::CIT { # __check_info_text
 }
 
 sub styles {
-    return qw( default rect box circle ellipse ec );
+    return qw( default rect box circle ellipse ec blank );
 }
 
 sub options {
@@ -66,6 +66,7 @@ sub random {
         box     => 'BOX012',
         rect    => 'RECT01',
         default => 'DFAULT',
+        blank   => 'BLANK0',
     }
 }
 
@@ -129,6 +130,15 @@ sub rect {
             ->particle(100)->CIT
 }
 
+
+sub blank {
+    return GD::SecurityImage
+            ->new(lines => 10, Test::GDSI->options, send_ctobg => 0)
+            ->random(Test::GDSI->random->{blank})
+            ->create(normal => 'blank', [68,150,125], [255,0,0])
+            ->particle(500)->CIT
+}
+
 sub default { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
     return GD::SecurityImage
             ->new(lines => 10, Test::GDSI->options, send_ctobg => 0)
@@ -177,6 +187,14 @@ sub rect {
             ->random(Test::GDSI->random->{rect})
             ->create(ttf => 'rect', [63, 143, 167], [226, 223, 169])
             ->particle(2000)->CIT
+}
+
+sub blank {
+    return GD::SecurityImage
+            ->new(lines => 10, Test::GDSI->set_options(thickness => 2)->options)
+            ->random(Test::GDSI->random->{blank})
+            ->create(ttf => 'blank', [68,150,125], [255,0,0])
+            ->particle(5000)->CIT
 }
 
 sub default { ## no critic (ProhibitBuiltinHomonyms)

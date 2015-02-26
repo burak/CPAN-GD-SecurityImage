@@ -12,8 +12,8 @@ BEGIN {
 
    my %total = (
       magick => 2,
-      gd     => 2,
-      other  => 1,
+      gd     => 3,
+      other  => 2,
    );
 
    my $total  = 0;
@@ -27,12 +27,18 @@ BEGIN {
    my $eok = eval { $class->new };
    ok( $@, q{If there is an error == OK [since we didn't import() so far]} );
 
+   # At least we have 2 backends
+   my @be = $class->backends;
+   cmp_ok ( @be, '>=', 2, "At least 2 core backends expected.");
+
    # test if we've loaded the right library
    GD_TEST: {
       $class->import( use_magick => 0 );
       ok( $class->new->raw->isa('GD::Image' ), 'Loaded GD [1]' );
       $class->import( backend => 'GD' );
       ok( $class->new->raw->isa('GD::Image' ), 'Loaded GD [2]' );
+      $class->import( backend => undef );
+      ok($class->new->raw->isa('GD::Image'  ), 'Loaded GD [3]' );
    }
 
    SKIP: {

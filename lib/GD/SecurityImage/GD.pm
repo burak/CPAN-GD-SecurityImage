@@ -25,6 +25,8 @@ use constant FORMATS     => qw( png gif jpeg );
 use constant GDFONTS     => qw( Small Large MediumBold Tiny Giant );
 
 use constant RGB_WHITE   => (255, 255, 255);
+use constant RGB_BLACK   => (0, 0, 0 );
+
 use constant BOX_SIZE    => 7;
 
 use constant ROTATE_NONE             =>   0;
@@ -243,8 +245,9 @@ sub insert_text {
 sub place_gd {
    my($self, $key, $tx, $ty) = @_;
    my $tl    = $self->{_TEXT_LOCATION_};
-   my $black = $self->cconvert($self->{_COLOR_}{text});
-   my $white = $self->cconvert($tl->{scolor});
+   my $c     = $self->{_COLOR_} || {};
+   my $black = $self->cconvert( $c->{text}    ? $c->{text}    : [ RGB_BLACK ] );
+   my $white = $self->cconvert( $tl->{scolor} ? $tl->{scolor} : [ RGB_WHITE ] );
    my $font  = GD::Font->Tiny;
    my $fx    = (length($key)+1)*$font->width;
    my $x1    = $self->{width} - $fx;
