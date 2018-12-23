@@ -153,7 +153,8 @@ sub backends {
 
    return @list if defined wantarray;
 
-   my $report = "Available back-ends in $class v$VERSION are:\n\t"
+   my $version = $self->VERSION;
+   my $report = "Available back-ends in $class v$version are:\n\t"
                . join("\n\t", @list)
                . "\n\n"
                . "Search directories:\n\t"
