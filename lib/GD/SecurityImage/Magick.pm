@@ -1,8 +1,9 @@
 package GD::SecurityImage::Magick;
+
 # GD method emulation class for Image::Magick
 use strict;
 use warnings;
-use vars qw($VERSION);
+
 # Magick related
 use constant XPPEM        => 0; # character width 
 use constant YPPEM        => 1; # character height
@@ -19,8 +20,6 @@ use constant MAX_COMPRESS => 100;
 use constant FULL_CIRCLE  => 360;
 
 use Image::Magick;
-
-$VERSION = '1.71';
 
 sub init {
    # Create the image object

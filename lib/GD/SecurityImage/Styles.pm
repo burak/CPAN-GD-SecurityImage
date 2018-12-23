@@ -1,10 +1,8 @@
 package GD::SecurityImage::Styles;
+
 use strict;
 use warnings;
-use vars qw[$VERSION];
 use constant ARC_END_DEGREES => 360;
-
-$VERSION = '1.71';
 
 sub style_default {
    return shift->_drcommon(' \\ lines will be drawn ');

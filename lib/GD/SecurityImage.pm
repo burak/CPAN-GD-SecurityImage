@@ -1,7 +1,8 @@
 package GD::SecurityImage;
+
 use strict;
 use warnings;
-use vars qw[@ISA $VERSION $BACKEND];
+use vars qw[@ISA $BACKEND];
 use GD::SecurityImage::Styles;
 use Carp qw(croak);
 use constant RGB_WHITE   => ( 255, 255, 255 );
@@ -18,8 +19,6 @@ use constant DEFAULT_LINES  => 10;
 use constant MAX_RGB_VALUE  => 255;
 use constant PARTICLE_MULTIPLIER => 20;
 use constant MAX_RGB_PARAMS => 3;
-
-$VERSION = '1.73';
 
 sub import {
    my($class, @args) = @_;

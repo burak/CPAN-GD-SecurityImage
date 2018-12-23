@@ -1,7 +1,7 @@
 package GD::SecurityImage::GD;
+
 use strict;
 use warnings;
-use vars qw( $VERSION );
 
 use constant LOWLEFTX    => 0; # Lower left  corner x
 use constant LOWLEFTY    => 1; # Lower left  corner y
@@ -34,8 +34,6 @@ use constant ROTATE_CLOCKWISE        => 270;
 use constant FULL_CIRCLE             => 360;
 
 use GD;
-
-$VERSION = '1.71';
 
 # define the tff drawing method.
 my $TTF = __PACKAGE__->_versiongt( '1.31' ) ? 'stringFT' : 'stringTTF';
