@@ -412,6 +412,8 @@ sub is_hex {
 
 __END__
 
+=pod
+
 =head1 NAME
 
 GD::SecurityImage - Security image (captcha) generator.
