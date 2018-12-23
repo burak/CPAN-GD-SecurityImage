@@ -377,6 +377,12 @@ sub arc {
    return $self->{image}->arc(@args);
 }
 
+sub setThickness { ## no critic (NamingConventions::Capitalization)
+    my($self, @args) = @_;
+    $self->{image}->setThickness( @args );
+    return;
+}
+
 1;
 
 __END__
