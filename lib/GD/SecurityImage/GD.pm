@@ -3,53 +3,47 @@ package GD::SecurityImage::GD;
 use strict;
 use warnings;
 
-use constant LOWLEFTX    => 0; # Lower left  corner x
-use constant LOWLEFTY    => 1; # Lower left  corner y
-use constant LOWRIGHTX   => 2; # Lower right corner x
-use constant LOWRIGHTY   => 3; # Lower right corner y
-use constant UPRIGHTX    => 4; # Upper right corner x
-use constant UPRIGHTY    => 5; # Upper right corner y
-use constant UPLEFTX     => 6; # Upper left  corner x
-use constant UPLEFTY     => 7; # Upper left  corner y
-
-use constant CHX         => 0; # character-X
-use constant CHY         => 1; # character-Y
-use constant CHAR        => 2; # character
-use constant ANGLE       => 3; # character angle
-
-use constant MAXCOMPRESS => 9;
-
-use constant NEWSTUFF    => qw( ellipse setThickness _png_compression );
 # png is first due to various problems with gif() format
 use constant FORMATS     => qw( png gif jpeg );
 use constant GDFONTS     => qw( Small Large MediumBold Tiny Giant );
-
 use constant RGB_WHITE   => (255, 255, 255);
-use constant BOX_SIZE    => 7;
 
-use constant ROTATE_NONE             =>   0;
-use constant ROTATE_COUNTERCLOCKWISE =>  90;
-use constant ROTATE_UPSIDEDOWN       => 180;
-use constant ROTATE_CLOCKWISE        => 270;
-use constant FULL_CIRCLE             => 360;
+use constant {
+
+    LOWLEFTX                => 0, # Lower left  corner x
+    LOWLEFTY                => 1, # Lower left  corner y
+    LOWRIGHTX               => 2, # Lower right corner x
+    LOWRIGHTY               => 3, # Lower right corner y
+    UPRIGHTX                => 4, # Upper right corner x
+    UPRIGHTY                => 5, # Upper right corner y
+    UPLEFTX                 => 6, # Upper left  corner x
+    UPLEFTY                 => 7, # Upper left  corner y
+
+    CHX                     => 0, # character-X
+    CHY                     => 1, # character-Y
+    CHAR                    => 2, # character
+    ANGLE                   => 3, # character angle
+
+    MAXCOMPRESS             => 9,
+
+    BOX_SIZE                =>   7,
+
+    ROTATE_NONE             =>   0,
+    ROTATE_COUNTERCLOCKWISE =>  90,
+    ROTATE_UPSIDEDOWN       => 180,
+    ROTATE_CLOCKWISE        => 270,
+    FULL_CIRCLE             => 360,
+};
 
 use GD;
 
-# define the tff drawing method.
-my $TTF = __PACKAGE__->_versiongt( '1.31' ) ? 'stringFT' : 'stringTTF';
-
 sub init {
-   # Create the image object
-   my $self = shift;
-   $self->{image} = GD::Image->new($self->{width}, $self->{height});
-   $self->cconvert($self->{bgcolor}); # set background color
-   $self->setThickness($self->{thickness}) if $self->{thickness};
-   if ( $self->_versionlt( '2.07' ) ) {
-      foreach my $prop ( NEWSTUFF ) {
-         $self->{DISABLED}{$prop} = 1;
-      }
-   }
-   return;
+    # Create the image object
+    my $self = shift;
+    $self->{image} = GD::Image->new($self->{width}, $self->{height});
+    $self->cconvert($self->{bgcolor}); # set background color
+    $self->{image}->setThickness($self->{thickness}) if $self->{thickness};
+    return;
 }
 
 sub out {
@@ -73,9 +67,10 @@ sub out {
 
    my @iargs = ();
    if ( $opt{'compress'} ) {
-      push @iargs, MAXCOMPRESS      if $type eq 'png' and not $self->{DISABLED}{_png_compression};
+      push @iargs, MAXCOMPRESS      if $type eq 'png';
       push @iargs, $opt{'compress'} if $type eq 'jpeg';
    }
+
    return $i->$type(@iargs), $type, $self->{_RANDOM_NUMBER_};
 }
 
@@ -120,7 +115,7 @@ sub _insert_text_ttf_scramble {
             $x  = $self->{width}  / 2 + ($box->[CHX] - $total);
             $y  = $self->{height} / 2 +  $box->[CHY];
             $y += $randomy[int rand @randomy];
-            $self->{image}->$TTF(@config, Math::Trig::deg2rad($box->[CHAR]), $x, $y, $box->[ANGLE]);
+            $self->{image}->stringFT(@config, Math::Trig::deg2rad($box->[CHAR]), $x, $y, $box->[ANGLE]);
             $total -= $space->[CHX];
          }
    return;
@@ -134,7 +129,7 @@ sub _insert_text_ttf_normal {
       my $txt = shift;
       my $ang = shift || 0;
          $ang = Math::Trig::deg2rad($ang) if $ang;
-      my @box = GD::Image->$TTF(
+      my @box = GD::Image->stringFT(
                   $ctext, $self->{font}, $self->{ptsize}, $ang, 0, 0, $txt
                );
       if ( not @box ) { # use fake values instead of die-ing
@@ -181,7 +176,7 @@ sub _insert_text_ttf_normal {
 
    # this needs a fix. adjust x,y
    $self->{angle} = $self->{angle} ? Math::Trig::deg2rad($self->{angle}) : 0;
-   $self->{image}->$TTF( $ctext, $self->{font}, $self->{ptsize}, $self->{angle}, $x, $y, $key );
+   $self->{image}->stringFT( $ctext, $self->{font}, $self->{ptsize}, $self->{angle}, $x, $y, $key );
    return;
 }
 
@@ -281,7 +276,7 @@ sub ttf_info {
    my $angle = shift || 0;
    my $text  = shift;
    require Math::Trig;
-   my @box = GD::Image->$TTF(
+   my @box = GD::Image->stringFT(
                $self->{_COLOR_}{text},
                $self->{font},
                $self->{ptsize},
@@ -382,28 +377,6 @@ sub arc {
    return $self->{image}->arc(@args);
 }
 
-sub setThickness { ## no critic (NamingConventions::Capitalization)
-   my($self, @args) = @_;
-   if( $self->{image}->can('setThickness') ) { # $GD::VERSION >= 2.07
-      $self->{image}->setThickness( @args );
-   }
-   return;
-}
-
-sub _versiongt {
-   my $self   = shift;
-   my $check  = shift || 0;
-      $check += 0;
-   return $GD::VERSION >= $check ? 1 : 0;
-}
-
-sub _versionlt {
-   my $self   = shift;
-   my $check  = shift || 0;
-      $check += 0;
-   return $GD::VERSION < $check ? 1 : 0;
-}
-
 1;
 
 __END__
@@ -445,8 +418,6 @@ Used internally by L<GD::SecurityImage>. Nothing public here.
 =head2 rectangle
 
 =head2 setPixel
-
-=head2 setThickness
 
 =head2 ttf_info
 

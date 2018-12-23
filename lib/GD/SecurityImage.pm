@@ -258,11 +258,6 @@ sub create {
         lines => $self->cconvert($col2),
    };
 
-   # be a smart module and auto-disable ttf if we are under a prehistoric GD
-   if ( not $self->{IS_MAGICK} ) {
-      $method = 'normal' if $self->_versionlt( '1.20' );
-   }
-
    if ( $method eq 'normal' && ! $self->{gd_font} ) {
       $self->{gd_font} = $self->gdf('giant');
    }
@@ -639,8 +634,7 @@ none are mandatory.
 
 C<$method> can be B<C<normal>> or B<C<ttf>>.
 
-C<$style> can be one of the following (some of the styles may not work 
-if you are using a really old version of GD):
+C<$style> can be one of the following:
 
 =over 4
 
@@ -678,9 +672,6 @@ and circles.
 Draws nothing. See L</"OTHER USES">.
 
 =back
-
-I<Note>: if you have a (too) old version of GD, you may not be able 
-to use some of the styles.
 
 You can use this code to get all available style names:
 
@@ -785,9 +776,7 @@ long texts, be sure to adjust the image, or clipping will occur.
 =head2 out
 
 This method finally returns the created image, the mime type of the 
-image and the random number(s) generated. Older versions of GD only support
-C<gif> type, while new versions support C<jpeg> and C<png> 
-(B<update>: beginning with v2.15, GD resumed gif support).
+image and the random number(s) generated.
 
 The returned mime type is C<png> or C<gif> or C<jpeg> for C<GD> and 
 C<gif> for C<Image::Magick> (if you do not C<force> some other format).
@@ -917,8 +906,6 @@ this mandatory methods.
    ellipse		draws an ellipse
    arc			draws an arc
    setThickness		sets the thickness of the lines when drawing something
-   _versiongt           backend version is greater or equal to supplied param?
-   _versionlt           backend version is smaller than supplied param?
 
 and
 
@@ -1020,19 +1007,6 @@ may prevent this.
 See the L</SUPPORT> section if you have a bug or 
 request to report.
 
-=head2 Image::Magick bug
-
-There is a bug in PerlMagick' s C<QueryFontMetrics()> method. ImageMagick
-versions smaller than 6.0.4 is affected. Below text is from the ImageMagick 
-6.0.4 Changelog: L<http://www.imagemagick.org/www/Changelog.html>.
-
-"2004-05-06 PerlMagick's C<QueryFontMetrics()> incorrectly reports `unrecognized 
-attribute'` for the `font' attribute."
-
-Please upgrade to ImageMagick 6.0.4 or any newer version, if your ImageMagick 
-version is smaller than 6.0.4 and you want to use Image::Magick as the backend
-for GD::SecurityImage.
-
 =head2 GD bug
 
 =head3 path bug
@@ -1130,33 +1104,6 @@ uses more memory.
 The internal random code generator is used B<only> for demonstration 
 purposes for this module. It may not be I<effective>. You must supply 
 your own random code and use this module to display it.
-
-=item *
-
-B<[GD] png compression>
-
-Support for compression level argument to png() added in v2.07. If
-your GD version is smaller than this, compress option to C<out()>
-will be silently ignored.
-
-=item *
-
-B<[GD] setThickness>
-
-setThickness implemented in GD v2.07. If your GD version is smaller
-than that and you set thickness option, nothing will happen.
-
-=item *
-
-B<[GD] ellipse>
-
-C<ellipse()> method added in GD 2.07. 
-
-If your GD version is smaller than 2.07 and you use C<ellipse>, 
-the C<default> style will be returned.
-
-If your GD is smaller than 2.07 and you use C<ec>, only the circles will
-be drawn.
 
 =back
 

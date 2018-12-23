@@ -1,6 +1,14 @@
 Revision history for Perl extension GD::SecurityImage.
 
 {{$NEXT}}
+    - Drop legacy workarounds and documentation about those as well.
+    - In relation to that, we now depend on relatively new versions
+        of both GD & PerlMagick.
+    - These methods are now also removed a from the backends as well:
+        _versiongt
+        _versionlt
+        setThickness - this was just a wrapper around the underlying GD lib
+                        for the ancient GDs and not needed with new versions.
 
 1.74 2018-12-24 BURAK
     - Migrate to dzil.

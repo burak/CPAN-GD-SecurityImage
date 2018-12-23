@@ -189,22 +189,6 @@ sub setThickness { ## no critic (NamingConventions::Capitalization)
    return;
 }
 
-sub _versiongt {
-   my $self  = shift;
-   my $check = $self->_tovstr(shift);
-   my $gt    = $Image::Magick::VERSION gt $check;
-   my $eq    = $Image::Magick::VERSION eq $check;
-   my $ok    = $gt || $eq;
-   return $ok ? 1 : 0;
-}
-
-sub _versionlt {
-   my $self   = shift;
-   my $check  = $self->_tovstr(shift);
-   my $lt = $Image::Magick::VERSION lt $check ? 1 : 0;
-   return $lt;
-}
-
 sub _tovstr {
    my $self  = shift;
    my $thing = shift || return '0.0.0';
