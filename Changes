@@ -1,6 +1,8 @@
 Revision history for Perl extension GD::SecurityImage.
 
 {{$NEXT}}
+
+1.74 2018-12-24 BURAK
     - Migrate to dzil.
 
 1.73 Wed Jan 21 01:36:45 2015
