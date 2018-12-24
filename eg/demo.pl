@@ -615,21 +615,12 @@ This is a CGI program. Run from web.
 This program demonstrates the abilities of C<GD::SecurityImage>.
 It needs these CPAN modules: 
 
+   CGI
    DBI
    DBD::mysql
    Apache::Session::MySQL
    String::Random
    GD::SecurityImage	(with GD or Image::Magick)
-
-and these CORE modules:
-
-   CGI
-   Cwd
-   Time::HiRes
-
-Also, be sure to use recent versions of GD. This demo needs at least
-version C<1.31> of GD. And if you want to use C<Image::Magick> it must 
-be C<6.0.4> or newer.
 
 You'll also need a MySQL server to run the program. You must create 
 a table with this SQL code:
@@ -649,75 +640,6 @@ Security images are generated with the sample ttf font "StayPuft.ttf".
 Put it into the same folder as this program or alter C<$config{font}> value.
 If you want to use another font file, you may need to alter the image 
 generation options (see the C<%config> hash on top of the program code).
-
-=begin html
-
-<!-- this h1 part is for search.cpan.org -->
-<h1>
-<a class = 'u'
-   href  = '#___top'
-   title ='click to go to top of document'
-   name  = "DEMO SCREENSHOTS"
->DEMO SCREENSHOTS</a>
-</h1>
-
-<p>
-Here are some sample screen shots showing this demo in action.
-</p>
-
-<table border      = "0"
-       cellpadding = "4"
-       cellspacing = "1"
->
-   <tr>
-      <td style="text-align:center;font-weight:bold">
-         <br />
-         Enter demo.pl
-         <br />
-         <br />
-      </td>
-   </tr>
-   <tr>
-      <td><img border="0" src="http://img405.imageshack.us/img405/1967/demoentermc3.png" /></td>
-   </tr>
-
-   <tr>
-      <td style="text-align:center;font-weight:bold">
-         <br />
-         Validation <span style="color:red">Failed</span>
-         <br />
-         <br />
-      </td>
-   </tr>
-   <tr>
-      <td><img border="0" src="http://img87.imageshack.us/img87/2049/demofailep8.png" /></td>
-   </tr>
-
-   <tr>
-      <td style="text-align:center;font-weight:bold">
-         <br />
-         Validation <span style="color:green">Succeeded</span>
-         <br />
-         <br />
-      </td>
-   </tr>
-   <tr>
-      <td><img border="0" src="http://img405.imageshack.us/img405/7268/demopasskw8.png" /></td>
-   </tr>
-
-</table>
-
-=end html
-
-=begin html
-
-<p>
-All images in this document are generously hosted by
-<a href="http://imageshack.us">ImageShack</a>
-<a href="http://imageshack.us"><img src="http://imageshack.us/img/imageshack.png" border="0" /></a>
-</p>
-
-=end html
 
 =head1 CAVEAT EMPTOR
 
