@@ -425,6 +425,8 @@ Used internally by L<GD::SecurityImage>. Nothing public here.
 
 =head2 setPixel
 
+=head2 setThickness
+
 =head2 ttf_info
 
 =head1 SEE ALSO
