@@ -684,7 +684,7 @@ Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2004-2012 Burak Gürsoy. All rights reserved.
+Copyright 2004-2019 Burak Gürsoy. All rights reserved.
 
 =head1 LICENSE
 
