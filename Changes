@@ -1,6 +1,8 @@
 Revision history for Perl extension GD::SecurityImage.
 
 {{$NEXT}}
+
+1.75 2018-12-24 BURAK
     - Drop legacy workarounds and documentation about those as well.
     - In relation to that, we now depend on relatively new versions
         of both GD & PerlMagick.
