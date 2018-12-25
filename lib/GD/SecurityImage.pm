@@ -1036,16 +1036,9 @@ with this error:
 This is due to a I<wrong> installation of the L<GD> module. GD
 includes C<XS> code and it needs to be compiled. You can't just 
 copy/paste the I<GD.pm> and expect it to work. It will not.
-If you are under Windows and don't have a C compiler, you have 
-to add new repositories to install I<GD>, since ActiveState' s own 
-repositories don't include I<GD>. Randy Kobes and J-L Morel have 
-ppm repositories for both 5.6.x and 5.8.x and they both have I<GD>:
-
-   http://www.bribes.org/perl/ppmdir.html
-   http://theoryx5.uwinnipeg.ca/
-
-I<bribes.org> also has a I<GD::SecurityImage> ppd, so you can just 
-install I<GD::SecurityImage> from that repository.
+You need to compile the module to have it function (or if you can
+locate a compiled binary distribution of it, then you can use that
+instead).
 
 =head2 libgd errors
 
