@@ -1082,6 +1082,21 @@ If it prints out a junk that starts with 'GIF87a', everything is OK.
 
 =back
 
+=head2 Image::Magick missing fonts or throwing obscure warnings
+
+You might get these kind of warnings when the Image::Magick backend is used:
+
+    Argument " " isn't numeric in division (/) at (...)/GD/SecurityImage/Magick.pm line (...).
+    Use of uninitialized value in addition (+) at (...)/GD/SecurityImage/Magick.pm line (...).
+    (...)
+
+If this is the case, check if you have C<gsfonts> installed on your system.
+See this ticket for more information:
+L<https://github.com/burak/CPAN-GD-SecurityImage/issues/2>.
+
+Alternatively; you can also use the GD backend, but be sure to check the caveats
+about it above.
+
 =head1 CAVEAT EMPTOR
 
 =over 4

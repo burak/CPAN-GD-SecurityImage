@@ -1,6 +1,7 @@
 Revision history for Perl extension GD::SecurityImage.
 
 {{$NEXT}}
+    - Document missing lib causing issues with Image::Magick.
 
 1.75 2018-12-24 BURAK
     - Drop legacy workarounds and documentation about those as well.
