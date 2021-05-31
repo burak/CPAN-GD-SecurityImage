@@ -180,21 +180,21 @@ sub default { ## no critic (ProhibitBuiltinHomonyms)
             ->particle(5000)->CIT
 }
 
-package gd_normal_scramble;              use parent qw(gd_normal);
-package gd_ttf_scramble;                 use parent qw(gd_ttf);
-package gd_ttf_scramble_fixed;           use parent qw(gd_ttf);
-package gd_normal_info_text;             use parent qw(gd_normal);
-package gd_ttf_info_text;                use parent qw(gd_ttf);
-package gd_normal_scramble_info_text;    use parent qw(gd_normal);
-package gd_ttf_scramble_info_text;       use parent qw(gd_ttf);
-package gd_ttf_scramble_fixed_info_text; use parent qw(gd_ttf);
+package gd_normal_scramble;              use parent qw(-norequire gd_normal);
+package gd_ttf_scramble;                 use parent qw(-norequire gd_ttf);
+package gd_ttf_scramble_fixed;           use parent qw(-norequire gd_ttf);
+package gd_normal_info_text;             use parent qw(-norequire gd_normal);
+package gd_ttf_info_text;                use parent qw(-norequire gd_ttf);
+package gd_normal_scramble_info_text;    use parent qw(-norequire gd_normal);
+package gd_ttf_scramble_info_text;       use parent qw(-norequire gd_ttf);
+package gd_ttf_scramble_fixed_info_text; use parent qw(-norequire gd_ttf);
 
-package magick;                          use parent qw(gd_ttf);
-package magick_scramble;                 use parent qw(gd_ttf);
-package magick_scramble_fixed;           use parent qw(gd_ttf);
-package magick_info_text;                use parent qw(gd_ttf);
-package magick_scramble_info_text;       use parent qw(gd_ttf);
-package magick_scramble_fixed_info_text; use parent qw(gd_ttf);
+package magick;                          use parent qw(-norequire gd_ttf);
+package magick_scramble;                 use parent qw(-norequire gd_ttf);
+package magick_scramble_fixed;           use parent qw(-norequire gd_ttf);
+package magick_info_text;                use parent qw(-norequire gd_ttf);
+package magick_scramble_info_text;       use parent qw(-norequire gd_ttf);
+package magick_scramble_fixed_info_text; use parent qw(-norequire gd_ttf);
 
 1;
 
