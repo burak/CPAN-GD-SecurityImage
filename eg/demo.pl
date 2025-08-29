@@ -680,7 +680,7 @@ L<GD::SecurityImage>.
 
 =head1 AUTHOR
 
-Burak GE<252>rsoy, E<lt>burakE<64>cpan.orgE<gt>
+Burak GE<252>rsoy
 
 =head1 COPYRIGHT
 
